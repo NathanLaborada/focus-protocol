@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Focus Protocol</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header id="bar">
+    <nav id="steps" aria-label="Phases">
+      <span data-phase="preload">Pre-load</span> ·
+      <span data-phase="activation">Activate</span> ·
+      <span data-phase="immersion">Immerse</span> ·
+      <span data-phase="exit">Exit</span>
+    </nav>
+    <button id="skip" class="ghost">Skip →</button>
+  </header>
+
+  <section id="preload">
+    <form id="setup">
+      <h1>New session</h1>
+      <label>Session title
+        <input id="title" maxlength="80" placeholder="What are you working on?">
+      </label>
+      <div class="row">
+        <label>Work (minutes) <input id="work" type="number" min="1" max="180" required></label>
+        <label>Rest (minutes) <input id="rest" type="number" min="1" max="60" required></label>
+      </div>
+      <button type="submit" class="primary">Start pre-loading</button>
+    </form>
+    <div id="stare" hidden>
+      <p class="big">Stare at a wall for 10 minutes.</p>
+      <p class="muted">No phone, no music, no chasing thoughts. This lowers your baseline dopamine so the work ahead feels rewarding.</p>
+      <div class="timer" id="preload-timer">10:00</div>
+    </div>
+  </section>
+
+  <section id="activation" hidden>
+    <div id="act-choice">
+      <h1>Activation</h1>
+      <p class="muted">Give your body a strong sensory kick to switch into work mode.</p>
+      <div class="row">
+        <button id="act-own-btn">I have my own</button>
+        <button id="act-builtin-btn" class="primary">Use the built-in one</button>
+      </div>
+    </div>
+    <div id="act-own" hidden>
+      <h1>Your trigger</h1>
+      <label>What are you doing to activate?
+        <textarea id="own-trigger" rows="3" maxlength="300" placeholder="e.g. cold shower, loud song, espresso, sprint up the stairs"></textarea>
+      </label>
+      <button class="primary act-done">Done</button>
+    </div>
+    <div id="act-builtin" hidden>
+      <div id="circle"></div>
+      <p class="big" id="act-label"></p>
+      <p class="muted" id="act-sub"></p>
+      <button class="primary act-done" id="splash-done" hidden>Done</button>
+    </div>
+  </section>
+
+  <section id="immersion" hidden>
+    <p class="muted" id="session-title"></p>
+    <p id="mode"></p>
+    <div class="timer huge" id="pomo-timer">25:00</div>
+    <div id="rest-panel" hidden>
+      <p class="big">Put your phone away. Stand up and stretch.</p>
+      <ol id="stretches"></ol>
+    </div>
+    <div class="controls">
+      <select id="sound" aria-label="Sound">
+        <option value="off">Sound off</option>
+        <option value="binaural">Binaural beats</option>
+        <option value="isochronic">Isochronic tones</option>
+      </select>
+      <select id="beat" aria-label="Frequency">
+        <option value="15">Focus · 15 Hz beta</option>
+        <option value="40">Deep focus · 40 Hz gamma</option>
+      </select>
+      <input id="volume" type="range" min="0" max="100" aria-label="Volume">
+      <button id="done" class="primary">Done</button>
+    </div>
+    <p class="muted small" id="headphones" hidden>Binaural beats only work with headphones.</p>
+  </section>
+
+  <section id="exit" hidden>
+    <h1>Exit protocol</h1>
+    <p class="muted">Come down gradually. Pick one or more, away from screens.</p>
+    <input id="search" type="search" placeholder="Search exit protocols" aria-label="Search exit protocols">
+    <ul id="exit-list"></ul>
+    <button id="restart" class="primary">Start new session</button>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>

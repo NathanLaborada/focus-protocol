@@ -1,0 +1,28 @@
+{
+  "name": "focus-protocol",
+  "productName": "Focus Protocol",
+  "version": "1.0.0",
+  "description": "A four-phase deep work app: pre-load, activate, immerse (pomodoro + binaural beats), exit.",
+  "main": "main.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win portable"
+  },
+  "build": {
+    "appId": "io.github.focusprotocol",
+    "files": [
+      "main.js",
+      "index.html",
+      "style.css",
+      "app.js"
+    ],
+    "win": {
+      "target": "portable"
+    }
+  },
+  "devDependencies": {
+    "electron": "^45.4.1",
+    "electron-builder": "^26.18.0"
+  }
+}
