@@ -5,6 +5,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Focus Protocol</title>
+  <link rel="icon" href="icon.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -15,7 +16,15 @@
       <span data-phase="immersion">Immerse</span> ·
       <span data-phase="exit">Exit</span>
     </nav>
-    <button id="skip" class="ghost">Skip →</button>
+    <div class="bar-buttons">
+      <button id="open-settings" class="ghost icon-btn" aria-label="Settings" title="Settings">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+      <button id="skip" class="ghost">Skip →</button>
+    </div>
   </header>
 
   <section id="preload">
@@ -25,13 +34,20 @@
         <input id="title" maxlength="80" placeholder="What are you working on?">
       </label>
       <div class="row">
+        <label>Pre-load
+          <select id="preload-min">
+            <option value="5">5 min</option>
+            <option value="10">10 min</option>
+            <option value="15">15 min</option>
+          </select>
+        </label>
         <label>Work (minutes) <input id="work" type="number" min="1" max="180" required></label>
         <label>Rest (minutes) <input id="rest" type="number" min="1" max="60" required></label>
       </div>
       <button type="submit" class="primary">Start pre-loading</button>
     </form>
     <div id="stare" hidden>
-      <p class="big">Stare at a wall for 10 minutes.</p>
+      <p class="big">Stare at a wall for <span id="preload-len">10</span> minutes.</p>
       <p class="muted">No phone, no music, no chasing thoughts. This lowers your baseline dopamine so the work ahead feels rewarding.</p>
       <div class="timer" id="preload-timer">10:00</div>
     </div>
@@ -74,12 +90,15 @@
         <option value="off">Sound off</option>
         <option value="binaural">Binaural beats</option>
         <option value="isochronic">Isochronic tones</option>
+        <option value="brown">Brown noise</option>
       </select>
       <select id="beat" aria-label="Frequency">
+        <option value="10">Calm focus · 10 Hz alpha</option>
         <option value="15">Focus · 15 Hz beta</option>
         <option value="40">Deep focus · 40 Hz gamma</option>
       </select>
       <input id="volume" type="range" min="0" max="100" aria-label="Volume">
+      <button id="pause">Pause</button>
       <button id="done" class="primary">Done</button>
     </div>
     <p class="muted small" id="headphones" hidden>Binaural beats only work with headphones.</p>
@@ -87,11 +106,31 @@
 
   <section id="exit" hidden>
     <h1>Exit protocol</h1>
+    <p class="big" id="summary" hidden></p>
     <p class="muted">Come down gradually. Pick one or more, away from screens.</p>
     <input id="search" type="search" placeholder="Search exit protocols" aria-label="Search exit protocols">
     <ul id="exit-list"></ul>
     <button id="restart" class="primary">Start new session</button>
   </section>
+
+  <dialog id="settings" aria-labelledby="settings-title">
+    <form method="dialog">
+      <h2 id="settings-title">Settings</h2>
+      <label id="sink-row">Audio output
+        <select id="sink"><option value="">System default</option></select>
+      </label>
+      <label>Exit protocols <span class="hint">(one per line)</span>
+        <textarea id="edit-exits" rows="8"></textarea>
+      </label>
+      <label>Stretches <span class="hint">(one per line)</span>
+        <textarea id="edit-stretches" rows="6"></textarea>
+      </label>
+      <div class="row end">
+        <button type="button" id="reset-lists">Reset lists to defaults</button>
+        <button class="primary">Close</button>
+      </div>
+    </form>
+  </dialog>
 
   <script src="app.js"></script>
 </body>

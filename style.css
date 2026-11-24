@@ -38,7 +38,7 @@ input, select, textarea, button {
   font: inherit; color: var(--fg); background: #1a1d24;
   border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
 }
-input, textarea { width: 100%; margin-top: 4px; }
+input, textarea, label select { width: 100%; margin-top: 4px; }
 textarea { resize: vertical; }
 input[type=range] { width: 140px; padding: 0; margin: 0; accent-color: var(--accent); }
 button { cursor: pointer; }
@@ -53,6 +53,8 @@ button:hover { border-color: var(--muted); }
 }
 #steps { color: var(--muted); font-size: .85rem; }
 #skip { white-space: nowrap; }
+.bar-buttons { display: flex; gap: 6px; }
+.icon-btn { display: grid; place-items: center; padding: 8px 10px; }
 #steps .on { color: var(--fg); font-weight: 600; }
 
 #circle {
@@ -67,6 +69,18 @@ button:hover { border-color: var(--muted); }
   margin-top: 40px; opacity: .45; transition: opacity .3s;
 }
 .controls:hover, .controls:focus-within { opacity: 1; }
+
+#summary { margin: 8px 0 4px; }
+
+dialog {
+  --fg: #e8e6e3; --muted: #8b8f98; /* stay readable even on the bright activation background */
+  width: min(520px, 92vw); padding: 24px; text-align: left;
+  color: var(--fg); background: #16181e; border: 1px solid var(--line); border-radius: 12px;
+}
+dialog::backdrop { background: rgba(0, 0, 0, .6); }
+dialog h2 { margin: 0 0 8px; font-weight: 500; }
+.hint { font-size: .8rem; opacity: .8; }
+.row.end { justify-content: flex-end; margin-top: 8px; }
 
 #exit-list { list-style: none; padding: 0; margin: 12px 0 20px; text-align: left; max-height: 50vh; overflow: auto; }
 #exit-list label {

@@ -1,6 +1,8 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('node:path');
 
+app.setAppUserModelId('io.github.focusprotocol'); // Windows needs this to show notifications
+
 app.whenReady().then(() => {
   const win = new BrowserWindow({
     width: 960,
@@ -9,6 +11,7 @@ app.whenReady().then(() => {
     minHeight: 600,
     autoHideMenuBar: true,
     backgroundColor: '#111318',
+    icon: path.join(__dirname, 'icon.png'),
     webPreferences: {
       backgroundThrottling: false, // keep timers exact while minimised
       autoplayPolicy: 'no-user-gesture-required', // let alarms sound without a click first

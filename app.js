@@ -48,7 +48,11 @@ const EXITS = [
 ];
 
 // ---------- settings (saved on this computer) ----------
-const DEFAULTS = { title: '', work: 25, rest: 5, sound: 'off', beat: 15, volume: 30, ownTrigger: '' };
+const DEFAULTS = {
+  title: '', preload: 10, work: 25, rest: 5,
+  sound: 'off', beat: 15, volume: 30, sink: '',
+  ownTrigger: '', exits: EXITS, stretches: STRETCHES,
+};
 const settings = { ...DEFAULTS, ...JSON.parse(localStorage.getItem('settings') || '{}') };
 const save = () => localStorage.setItem('settings', JSON.stringify(settings));
 const clamp = (v, lo, hi, fallback) => (Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : fallback);
@@ -61,18 +65,53 @@ const stopTimers = () => { timers.forEach(clearTimeout); timers = []; }; // clea
 
 const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
-// Counts down against the clock (not tick counting), so it never drifts.
+// Counts down against the clock (not tick counting), so it never drifts. Returns pause/resume controls.
 function countdown(seconds, el, onDone) {
-  const end = Date.now() + (seconds * 1000) / SPEED;
-  const id = setInterval(tick, 200);
-  timers.push(id);
-  tick();
+  const total = seconds * 1000;
+  let left = total; // ms left while paused
+  let end = 0;
+  let id = null;
+  const remaining = () => (id ? Math.max(0, (end - Date.now()) * SPEED) : left);
   function tick() {
-    const left = Math.max(0, Math.ceil(((end - Date.now()) * SPEED) / 1000));
-    el.textContent = fmt(left);
-    if (left === 0) { clearInterval(id); onDone(); }
+    const ms = remaining();
+    el.textContent = fmt(Math.ceil(ms / 1000));
+    if (ms === 0) { pause(); onDone(); }
   }
+  function resume() {
+    end = Date.now() + left / SPEED;
+    id = setInterval(tick, 200);
+    timers.push(id);
+    tick();
+  }
+  function pause() {
+    left = remaining();
+    clearInterval(id);
+    id = null;
+  }
+  resume();
+  return { pause, resume, elapsed: () => total - remaining() };
 }
+
+// ---------- notifications and keep-awake ----------
+function notify(body) {
+  // Only when the app isn't in front; the alarm sound covers the in-app case.
+  if (document.hasFocus() || !('Notification' in window) || Notification.permission !== 'granted') return;
+  new Notification('Focus Protocol', { body, silent: true });
+}
+
+let wakeLock = null;
+async function keepAwake(on) {
+  try {
+    if (on && !wakeLock) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.onrelease = () => { wakeLock = null; };
+    } else if (!on && wakeLock) {
+      await wakeLock.release();
+    }
+  } catch { /* unsupported or refused: the screen may sleep, nothing else breaks */ }
+}
+// Windows drops the lock when the window is minimised; take it again on return.
+document.addEventListener('visibilitychange', () => { if (phase === 'immersion' && !document.hidden) keepAwake(true); });
 
 // ---------- audio (all generated live, no files) ----------
 let ctx, master, sources = [];
@@ -82,11 +121,43 @@ function audio() {
     master = ctx.createGain();
     master.connect(ctx.destination);
     setVolume(settings.volume);
+    applySink();
   }
   if (ctx.state === 'suspended') ctx.resume();
   return ctx;
 }
 const setVolume = (v) => { if (master) master.gain.value = (v / 100) ** 2 * 0.6; }; // squared = feels linear to the ear
+
+async function applySink() {
+  if (!ctx?.setSinkId) return;
+  try {
+    await ctx.setSinkId(settings.sink);
+  } catch { // device unplugged or gone: fall back to the system default
+    settings.sink = '';
+    save();
+    await ctx.setSinkId('').catch(() => {});
+  }
+}
+
+let brownBuffer;
+function brownNoise(c) {
+  if (!brownBuffer) {
+    const len = c.sampleRate * 10;
+    brownBuffer = c.createBuffer(1, len, c.sampleRate);
+    const d = brownBuffer.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < len; i++) {
+      last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02;
+      d[i] = last * 3.5;
+    }
+    const drift = d[len - 1] - d[0];
+    for (let i = 0; i < len; i++) d[i] -= (drift * i) / (len - 1); // end meets start: no click at the loop point
+  }
+  const src = c.createBufferSource();
+  src.buffer = brownBuffer;
+  src.loop = true;
+  return src;
+}
 
 const CARRIER = 200; // Hz, the audible base tone
 function startSound(kind, beat) {
@@ -104,8 +175,8 @@ function startSound(kind, beat) {
       osc.start();
       sources.push(osc);
     }
-  } else {
-    // Isochronic: one tone switched fully on and off `beat` times per second by a square wave.
+  } else if (kind === 'isochronic') {
+    // One tone switched fully on and off `beat` times per second by a square wave.
     const tone = c.createOscillator();
     const lfo = c.createOscillator();
     const depth = c.createGain();
@@ -120,6 +191,11 @@ function startSound(kind, beat) {
     tone.start();
     lfo.start();
     sources.push(tone, lfo);
+  } else {
+    const noise = brownNoise(c);
+    noise.connect(master);
+    noise.start();
+    sources.push(noise);
   }
 }
 function stopSound() { sources.forEach((s) => s.stop()); sources = []; }
@@ -159,8 +235,10 @@ const PHASES = ['preload', 'activation', 'immersion', 'exit'];
 let phase;
 
 function go(name) {
+  if (phase === 'immersion' && mode === 'work') focusMs += clock.elapsed(); // count the unfinished round
   stopTimers();
   stopSound();
+  keepAwake(false);
   phase = name;
   delete document.body.dataset.glow;
   document.querySelectorAll('section').forEach((s) => { s.hidden = s.id !== name; });
@@ -176,6 +254,7 @@ const enter = {
   preload() {
     show('#setup', '#stare');
     $('#title').value = settings.title;
+    $('#preload-min').value = String(settings.preload);
     $('#work').value = settings.work;
     $('#rest').value = settings.rest;
   },
@@ -189,12 +268,21 @@ const enter = {
     $('#sound').value = settings.sound;
     $('#beat').value = String(settings.beat);
     $('#volume').value = settings.volume;
-    $('#headphones').hidden = settings.sound !== 'binaural';
+    showSoundHints();
     round = 1;
+    focusMs = 0;
+    roundsDone = 0;
+    paused = false;
+    $('#pause').textContent = 'Pause';
+    keepAwake(true);
     work();
   },
 
   exit() {
+    const minutes = Math.round(focusMs / 60000);
+    $('#summary').hidden = minutes === 0 && roundsDone === 0;
+    $('#summary').textContent = `You focused for ${minutes} minute${minutes === 1 ? '' : 's'}`
+      + ` and finished ${roundsDone} work round${roundsDone === 1 ? '' : 's'}.`;
     $('#search').value = '';
     renderExits();
   },
@@ -203,6 +291,7 @@ const enter = {
 // ---------- 1. pre-loading ----------
 $('#setup').oninput = () => {
   settings.title = $('#title').value.trim();
+  settings.preload = [5, 10, 15].includes(Number($('#preload-min').value)) ? Number($('#preload-min').value) : 10;
   settings.work = clamp(parseFloat($('#work').value), 1, 180, settings.work);
   settings.rest = clamp(parseFloat($('#rest').value), 1, 60, settings.rest);
   save();
@@ -210,8 +299,14 @@ $('#setup').oninput = () => {
 $('#setup').onsubmit = (e) => {
   e.preventDefault();
   audio(); // unlock audio on a click so the end chime can play
+  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
   show('#stare', '#setup');
-  countdown(10 * 60, $('#preload-timer'), () => { chime(); go('activation'); });
+  $('#preload-len').textContent = settings.preload;
+  countdown(settings.preload * 60, $('#preload-timer'), () => {
+    chime();
+    notify('Pre-loading done. Time to activate.');
+    go('activation');
+  });
 };
 
 // ---------- 2. activation ----------
@@ -276,31 +371,70 @@ function splash() {
 // ---------- 3. immersion (pomodoro) ----------
 let round = 1;
 let mode = 'work';
+let clock = null;
+let paused = false;
+let focusMs = 0;
+let roundsDone = 0;
+
+const setModeLabel = () => {
+  $('#mode').textContent = `${mode === 'work' ? 'Work' : 'Rest'} · Round ${round}${paused ? ' · Paused' : ''}`;
+};
 
 function work() {
   mode = 'work';
-  $('#mode').textContent = `Work · Round ${round}`;
+  setModeLabel();
   $('#rest-panel').hidden = true;
   startSound(settings.sound, settings.beat);
-  countdown(settings.work * 60, $('#pomo-timer'), () => { alarm(); rest(); });
+  clock = countdown(settings.work * 60, $('#pomo-timer'), () => {
+    focusMs += settings.work * 60000;
+    roundsDone++;
+    alarm();
+    notify(`Work round ${round} done. Time to rest: put your phone away and stretch.`);
+    rest();
+  });
 }
 
 function rest() {
   mode = 'rest';
   stopSound();
-  $('#mode').textContent = `Rest · Round ${round}`;
+  setModeLabel();
+  renderStretches();
   $('#rest-panel').hidden = false;
-  countdown(settings.rest * 60, $('#pomo-timer'), () => { alarm(); round++; work(); });
+  clock = countdown(settings.rest * 60, $('#pomo-timer'), () => {
+    alarm();
+    round++;
+    notify(`Break over. Round ${round} is starting.`);
+    work();
+  });
 }
 
-$('#stretches').append(...STRETCHES.map((s) => Object.assign(document.createElement('li'), { textContent: s })));
+$('#pause').onclick = () => {
+  paused = !paused;
+  if (paused) {
+    clock.pause();
+    stopSound();
+  } else {
+    clock.resume();
+    if (mode === 'work') startSound(settings.sound, settings.beat);
+  }
+  $('#pause').textContent = paused ? 'Resume' : 'Pause';
+  setModeLabel();
+};
 
+const renderStretches = () => $('#stretches').replaceChildren(
+  ...settings.stretches.map((s) => Object.assign(document.createElement('li'), { textContent: s })),
+);
+
+function showSoundHints() {
+  $('#headphones').hidden = settings.sound !== 'binaural';
+  $('#beat').hidden = settings.sound === 'off' || settings.sound === 'brown';
+}
 function soundChanged() {
   settings.sound = $('#sound').value;
   settings.beat = Number($('#beat').value);
   save();
-  $('#headphones').hidden = settings.sound !== 'binaural';
-  if (mode === 'work') startSound(settings.sound, settings.beat);
+  showSoundHints();
+  if (mode === 'work' && !paused) startSound(settings.sound, settings.beat);
 }
 $('#sound').onchange = soundChanged;
 $('#beat').onchange = soundChanged;
@@ -313,7 +447,7 @@ $('#done').onclick = () => go('exit');
 
 // ---------- 4. exit protocol ----------
 function renderExits() {
-  $('#exit-list').replaceChildren(...EXITS.map((text) => {
+  $('#exit-list').replaceChildren(...settings.exits.map((text) => {
     const li = document.createElement('li');
     const label = document.createElement('label');
     const box = Object.assign(document.createElement('input'), { type: 'checkbox' });
@@ -328,5 +462,51 @@ $('#search').oninput = (e) => {
   document.querySelectorAll('#exit-list li').forEach((li) => { li.hidden = !li.textContent.toLowerCase().includes(q); });
 };
 $('#restart').onclick = () => go('preload');
+
+// ---------- settings panel ----------
+async function listOutputs() {
+  const sel = $('#sink');
+  let outputs = [];
+  try {
+    outputs = (await navigator.mediaDevices.enumerateDevices())
+      .filter((d) => d.kind === 'audiooutput' && d.deviceId && d.deviceId !== 'default' && d.deviceId !== 'communications');
+  } catch { /* no device access: only "System default" is offered */ }
+  sel.replaceChildren(new Option('System default', ''), ...outputs.map((d, i) => new Option(d.label || `Output ${i + 1}`, d.deviceId)));
+  sel.value = settings.sink;
+  if (sel.value !== settings.sink) sel.value = ''; // saved device is not plugged in
+}
+
+const lines = (text) => text.split('\n').map((l) => l.trim()).filter(Boolean);
+function fillListEditors() {
+  $('#edit-exits').value = settings.exits.join('\n');
+  $('#edit-stretches').value = settings.stretches.join('\n');
+}
+function listsChanged() {
+  if (phase === 'exit') renderExits();
+  if (phase === 'immersion' && mode === 'rest') renderStretches();
+  save();
+}
+
+$('#sink-row').hidden = !('setSinkId' in AudioContext.prototype);
+$('#open-settings').onclick = () => {
+  fillListEditors();
+  listOutputs();
+  $('#settings').showModal();
+};
+$('#sink').onchange = async (e) => {
+  settings.sink = e.target.value;
+  save();
+  audio();
+  await applySink();
+  beep(660, 0, 0.4, 0.25); // a test tone, so you hear where the sound now goes
+};
+$('#edit-exits').oninput = (e) => { settings.exits = lines(e.target.value); listsChanged(); };
+$('#edit-stretches').oninput = (e) => { settings.stretches = lines(e.target.value); listsChanged(); };
+$('#reset-lists').onclick = () => {
+  settings.exits = EXITS;
+  settings.stretches = STRETCHES;
+  fillListEditors();
+  listsChanged();
+};
 
 go('preload');
