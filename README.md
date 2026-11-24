@@ -36,7 +36,7 @@ Every phase except the last has a **Skip →** button.
 
 ### Use the app (Windows)
 
-1. Download `Focus Protocol 1.0.0.exe` from the [Releases](../../releases) page.
+1. Download `Focus.Protocol.1.0.0.exe` from the [Releases](../../releases) page.
 2. Double-click it. There's no installer, so the .exe runs as-is.
 3. Windows SmartScreen may say *"Windows protected your PC"*, because the app isn't code-signed. Click **More info → Run anyway**.
 
