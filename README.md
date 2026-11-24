@@ -45,7 +45,7 @@ Every phase except the last has a **Skip →** button.
 Requires [Node.js](https://nodejs.org) 18 or newer.
 
 ```bash
-git clone https://github.com/<your-username>/focus-protocol.git
+git clone https://github.com/NathanLaborada/focus-protocol.git
 cd focus-protocol
 npm install
 npm start
