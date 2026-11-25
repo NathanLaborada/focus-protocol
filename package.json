@@ -7,7 +7,7 @@
   "license": "MIT",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --win portable"
+    "dist": "electron-builder --win"
   },
   "build": {
     "appId": "io.github.focusprotocol",
@@ -19,8 +19,32 @@
       "icon.png"
     ],
     "win": {
-      "target": "portable",
+      "target": ["nsis", "portable"],
       "icon": "icon.png"
+    },
+    "nsis": {
+      "artifactName": "Focus-Protocol-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "Focus-Protocol-Portable-${version}.${ext}"
+    },
+    "mac": {
+      "target": { "target": "dmg", "arch": ["universal"] },
+      "icon": "icon.png",
+      "category": "public.app-category.productivity",
+      "identity": "-",
+      "hardenedRuntime": false
+    },
+    "dmg": {
+      "artifactName": "Focus-Protocol-${version}.${ext}"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "icon.png",
+      "category": "Utility"
+    },
+    "appImage": {
+      "artifactName": "Focus-Protocol-${version}.${ext}"
     }
   },
   "devDependencies": {

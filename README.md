@@ -45,11 +45,20 @@ Every phase except the last has a **Skip →** button. The **⚙ settings** butt
 
 ## Quick start
 
-### Use the app (Windows)
+### Use the app
 
-1. Download the latest `Focus.Protocol.<version>.exe` from the [Releases](../../releases) page.
-2. Double-click it. There's no installer, so the .exe runs as-is.
-3. Windows SmartScreen may say *"Windows protected your PC"*, because the app isn't code-signed. Click **More info → Run anyway**.
+Download the file for your system from the [Releases](../../releases) page.
+
+**Windows**, pick one:
+
+- `Focus-Protocol-Setup-<version>.exe` installs the app, adds a Start menu entry, and starts faster.
+- `Focus-Protocol-Portable-<version>.exe` needs no install. Double-click it and it runs as-is.
+
+Windows SmartScreen may say *"Windows protected your PC"*, because the app isn't code-signed. Click **More info → Run anyway**.
+
+**macOS:** open `Focus-Protocol-<version>.dmg` and drag the app into Applications. It isn't signed by Apple, so the first time, right-click the app and choose **Open**. On newer macOS versions, if that doesn't offer an Open button, go to **System Settings → Privacy & Security** and click **Open Anyway**.
+
+**Linux:** download `Focus-Protocol-<version>.AppImage`, make it executable (`chmod +x Focus-Protocol-*.AppImage`), and run it.
 
 ### Run from source
 
@@ -68,7 +77,15 @@ npm start
 npm run dist
 ```
 
-This writes a portable `dist/Focus Protocol <version>.exe`, using the version from `package.json`.
+This writes the Windows installer and portable .exe to `dist/`, using the version from `package.json`. On a Mac or Linux machine, `npx electron-builder` builds for that system instead.
+
+### Releasing
+
+Releases are built automatically by GitHub Actions (`.github/workflows/release.yml`) for Windows, macOS and Linux.
+
+1. Bump `version` in `package.json` and commit.
+2. Tag and push: `git tag v1.x.0`, then `git push --tags`.
+3. The workflow builds on all three systems and attaches the files to the GitHub Release for that tag.
 
 ## How it works
 
@@ -100,8 +117,7 @@ HTML, CSS, vanilla JavaScript, the Web Audio API, Electron, and electron-builder
 
 ## Known limitations
 
-- The .exe is Windows-only. On macOS or Linux, run from source with `npm start`.
-- The .exe isn't code-signed, so SmartScreen warns on first launch.
+- The app isn't code-signed, so Windows SmartScreen and macOS both warn on first launch.
 - In a regular browser, the output-device list may only show "System default" until the site is given microphone access. The desktop app lists every device.
 
 ## License
