@@ -11,10 +11,10 @@
 <body>
   <header id="bar">
     <nav id="steps" aria-label="Phases">
-      <span data-phase="preload">Pre-load</span> ·
-      <span data-phase="activation">Activate</span> ·
-      <span data-phase="immersion">Immerse</span> ·
-      <span data-phase="exit">Exit</span>
+      <span data-phase="preload"><b>1</b> Pre-load</span>
+      <span data-phase="activation"><b>2</b> Activate</span>
+      <span data-phase="immersion"><b>3</b> Immerse</span>
+      <span data-phase="exit"><b>4</b> Exit</span>
     </nav>
     <div class="bar-buttons">
       <button id="open-settings" class="ghost icon-btn" aria-label="Settings" title="Settings">
@@ -41,6 +41,8 @@
         <input id="goal" maxlength="140" placeholder="e.g. First draft of section 2 written">
       </label>
       <p class="muted small tip">Eat the frog: make this session about your hardest task.</p>
+      <details id="timer-details">
+      <summary><span class="muted">Timer</span> <span id="timer-summary"></span></summary>
       <div class="row">
         <label>Timer
           <select id="timer-mode">
@@ -72,6 +74,7 @@
         <p class="muted small">Every 4th break is a long break.</p>
       </div>
       <p class="muted small" id="flow-hint" hidden>Flowtime: work until your focus fades, then press <strong>Take a break</strong>. Your break is a fifth of the time you worked.</p>
+      </details>
       <fieldset class="checklist">
         <legend>Before you start</legend>
         <label><input type="checkbox"> Phone in another room</label>
@@ -132,6 +135,7 @@
     <p class="muted small" id="start-with" hidden></p>
     <p id="mode"></p>
     <div class="timer huge" id="pomo-timer">25:00</div>
+    <div class="progress" id="progress" aria-hidden="true"><div id="progress-fill"></div></div>
     <button id="take-break" class="primary" hidden>Take a break</button>
     <div id="rest-panel" hidden>
       <div id="stretch-view">
@@ -158,10 +162,16 @@
         <option value="15">Focus · 15 Hz beta</option>
         <option value="40">Deep focus · 40 Hz gamma</option>
       </select>
-      <input id="volume" type="range" min="0" max="100" aria-label="Volume">
+      <label class="volume" title="Volume">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/>
+        </svg>
+        <input id="volume" type="range" min="0" max="100" aria-label="Volume">
+      </label>
       <button id="pause">Pause</button>
       <button id="done" class="primary">Done</button>
     </div>
+    <p class="muted small keys"><kbd>Space</kbd> pause or resume</p>
     <p class="muted small" id="headphones" hidden>Binaural beats only work with headphones.</p>
     <form id="park-form" class="park">
       <input id="park" maxlength="200" placeholder="Park a stray thought and press Enter" aria-label="Park a stray thought">
@@ -194,7 +204,12 @@
       </label>
       <button id="shutdown" class="primary">Shutdown complete</button>
     </div>
-    <p class="done-msg" id="shutdown-done" hidden>Shutdown complete. Work is done for now.</p>
+    <div class="done-msg" id="shutdown-done" hidden>
+      <svg class="check" viewBox="0 0 52 52" width="64" height="64" aria-hidden="true">
+        <circle cx="26" cy="26" r="24" fill="none" pathLength="1"/><path d="M15 27l8 8 14-16" fill="none" pathLength="1"/>
+      </svg>
+      <p>Shutdown complete. Work is done for now.</p>
+    </div>
     <p class="muted">Now come down gradually. Pick one or more, away from screens.</p>
     <input id="search" type="search" placeholder="Search exit protocols" aria-label="Search exit protocols">
     <ul id="exit-list" class="checks"></ul>
@@ -214,6 +229,7 @@
         <textarea id="edit-stretches" rows="6"></textarea>
       </label>
       <div class="row end">
+        <span class="muted small keys"><kbd>Esc</kbd> closes</span>
         <button type="button" id="reset-lists">Reset lists to defaults</button>
         <button class="primary">Close</button>
       </div>

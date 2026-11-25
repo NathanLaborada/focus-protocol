@@ -69,7 +69,8 @@ const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 
 
 // Both clocks measure against the system clock (not tick counting), so they never drift.
 // Both return the same controls: pause(), resume(), elapsed() in ms.
-function countdown(seconds, el, onDone) {
+// `bar`, if given, is stretched from 0 to full width as the countdown runs.
+function countdown(seconds, el, onDone, bar) {
   const total = seconds * 1000;
   let left = total; // ms left while paused
   let end = 0;
@@ -78,6 +79,7 @@ function countdown(seconds, el, onDone) {
   function tick() {
     const ms = remaining();
     el.textContent = fmt(Math.ceil(ms / 1000));
+    if (bar) bar.style.transform = `scaleX(${1 - ms / total})`;
     if (ms === 0) { pause(); onDone(); }
   }
   function resume() {
@@ -285,7 +287,11 @@ function go(name) {
   phase = name;
   delete document.body.dataset.glow;
   document.querySelectorAll('section').forEach((s) => { s.hidden = s.id !== name; });
-  document.querySelectorAll('#steps span').forEach((s) => s.classList.toggle('on', s.dataset.phase === name));
+  document.querySelectorAll('#steps span').forEach((s) => {
+    const i = PHASES.indexOf(s.dataset.phase);
+    s.classList.toggle('on', i === PHASES.indexOf(name));
+    s.classList.toggle('done', i < PHASES.indexOf(name));
+  });
   $('#skip').hidden = name === 'exit';
   enter[name]();
 }
@@ -351,6 +357,12 @@ function showModeFields() {
   const flow = settings.mode === 'flow';
   $('#pomo-fields').hidden = flow;
   $('#flow-hint').hidden = !flow;
+  $('#timer-summary').textContent = flow
+    ? `Flowtime · ${settings.preload} min pre-load`
+    : `${settings.work} / ${settings.rest} min, long break ${settings.longRest} · ${settings.preload} min pre-load`;
+  document.querySelectorAll('[data-preset]').forEach((b) => {
+    b.setAttribute('aria-pressed', b.dataset.preset === `${settings.work},${settings.rest}`);
+  });
 }
 
 // What last session's shutdown ritual left behind.
@@ -504,11 +516,12 @@ function work() {
   setModeLabel();
   $('#rest-panel').hidden = true;
   $('#take-break').hidden = settings.mode !== 'flow';
+  $('#progress').hidden = settings.mode === 'flow'; // count-up has no end to measure against
   startSound(settings.sound, settings.beat);
   if (settings.mode === 'flow') {
     clock = countup($('#pomo-timer'));
   } else {
-    clock = countdown(settings.work * 60, $('#pomo-timer'), () => { alarm(); endWork(settings.work * 60000); });
+    clock = countdown(settings.work * 60, $('#pomo-timer'), () => { alarm(); endWork(settings.work * 60000); }, $('#progress-fill'));
   }
 }
 
@@ -535,12 +548,13 @@ function rest(minutes) {
   renderStretches();
   $('#take-break').hidden = true;
   $('#rest-panel').hidden = false;
+  $('#progress').hidden = false;
   clock = countdown(minutes * 60, $('#pomo-timer'), () => {
     alarm();
     round++;
     notify(`Break over. Round ${round} is starting.`);
     work();
-  });
+  }, $('#progress-fill'));
 }
 
 $('#take-break').onclick = () => {
@@ -620,6 +634,14 @@ $('#volume').oninput = (e) => {
   save();
 };
 $('#done').onclick = () => go('exit');
+
+// Space pauses or resumes, unless you're typing or a control has focus (Space already presses it).
+document.addEventListener('keydown', (e) => {
+  if (e.code !== 'Space' || phase !== 'immersion' || $('#settings').open) return;
+  if (e.target.closest('input, textarea, select, button, summary')) return;
+  e.preventDefault();
+  $('#pause').click();
+});
 
 // ---------- 4. exit protocol ----------
 const renderExits = () => $('#exit-list').replaceChildren(...settings.exits.map(checkItem));

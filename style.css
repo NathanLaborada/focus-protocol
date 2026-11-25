@@ -52,11 +52,18 @@ button:hover { border-color: var(--muted); }
   position: fixed; top: 0; left: 0; right: 0; padding: 12px 16px; background: inherit; z-index: 1;
   display: flex; justify-content: space-between; align-items: center; gap: 12px;
 }
-#steps { color: var(--muted); font-size: .85rem; }
+#steps { display: flex; gap: 4px; flex-wrap: wrap; color: var(--muted); font-size: .85rem; }
+#steps span { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border-radius: 999px; }
+#steps b {
+  display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%;
+  font-size: .75rem; border: 1px solid var(--line);
+}
+#steps .on { color: var(--fg); font-weight: 600; background: #1a1d24; }
+#steps .on b { background: var(--accent); color: #0b0d12; border-color: transparent; }
+#steps .done b { color: var(--accent); border-color: var(--accent); }
 #skip { white-space: nowrap; }
 .bar-buttons { display: flex; gap: 6px; }
 .icon-btn { display: grid; place-items: center; padding: 8px 10px; }
-#steps .on { color: var(--fg); font-weight: 600; }
 
 .circle {
   width: 140px; height: 140px; border-radius: 50%; margin: 60px auto 80px;
@@ -74,7 +81,21 @@ button:hover { border-color: var(--muted); }
 .note p { margin: 2px 0; }
 .presets { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
 .presets button { padding: 4px 10px; font-size: .85rem; }
-.checklist { border: 0; padding: 0; margin: 10px 0 16px; text-align: left; }
+.presets button[aria-pressed=true] { border-color: var(--accent); color: var(--accent); }
+#timer-details { margin: 8px 0; text-align: left; }
+#timer-details summary {
+  display: flex; gap: 8px; align-items: center; cursor: pointer; list-style: none;
+  padding: 10px 12px; background: #1a1d24; border: 1px solid var(--line); border-radius: 8px; font-size: .9rem;
+}
+#timer-details summary::-webkit-details-marker { display: none; }
+#timer-details summary::after { content: 'Edit'; margin-left: auto; color: var(--accent); }
+#timer-details[open] summary::after { content: 'Hide'; }
+#timer-details summary:hover { border-color: var(--muted); }
+.checklist {
+  border: 0; padding: 0; margin: 10px 0 16px; text-align: left;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 2px 16px;
+}
+.checklist label { margin: 6px 0 0; }
 .checklist legend, .rating legend { padding: 0; color: var(--muted); font-size: .9rem; }
 .checklist label, .rating label {
   display: inline-flex; flex: none; gap: 6px; align-items: center;
@@ -98,6 +119,14 @@ button:hover { border-color: var(--muted); }
 #start-with { margin: 4px 0 0; }
 #take-break { margin-top: 8px; }
 #immersion.resting .huge { font-size: 4.5rem; } /* room for the stretch list */
+#immersion.resting { --accent: #73daca; } /* breaks get their own colour */
+#immersion.resting #mode { color: var(--accent); }
+.huge { margin-bottom: 8px; }
+.progress { width: min(360px, 70vw); height: 4px; margin: 0 auto 16px; background: var(--line); border-radius: 2px; overflow: hidden; }
+#progress-fill { height: 100%; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform .2s linear; }
+.volume { display: inline-flex; flex: none; align-items: center; gap: 6px; margin: 0; color: var(--muted); }
+.keys { margin: 10px 0 0; }
+kbd { font: inherit; font-size: .75rem; padding: 1px 6px; border: 1px solid var(--line); border-radius: 4px; }
 .park { display: flex; gap: 10px; align-items: center; justify-content: center; margin-top: 28px; }
 .park input { width: min(340px, 70vw); margin: 0; opacity: .6; transition: opacity .3s; }
 .park input:focus { opacity: 1; }
@@ -110,7 +139,34 @@ button:hover { border-color: var(--muted); }
 .card h2 { margin: 0 0 4px; font-size: 1.1rem; font-weight: 500; }
 .card h3 { margin: 10px 0 0; font-size: .9rem; font-weight: 400; color: var(--muted); }
 .rating { border: 0; padding: 0; margin: 10px 0; }
-.done-msg { color: var(--accent); font-size: 1.2rem; }
+.done-msg { color: var(--accent); font-size: 1.2rem; margin: 24px 0 8px; }
+.done-msg p { margin: 8px 0 0; animation: fade-in .4s .6s both; }
+.check { stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.check * { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw .5s ease-out forwards; }
+.check path { animation-delay: .4s; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes fade-in { from { opacity: 0; } }
+
+/* Smooth changes. Anything un-hidden replays its animation, so each phase and each view fades in. */
+@keyframes enter { from { opacity: 0; transform: translateY(8px); } }
+section, #setup, #stare, #act-choice, #act-own, #act-song, #act-builtin,
+#rest-panel, #stretch-view, #box-view, #take-break, #recap, #parked-block,
+#timer-details[open] > :not(summary), #flow-hint, #pomo-fields, #song-error {
+  animation: enter .4s ease-out;
+}
+dialog[open] { animation: enter .25s ease-out; }
+dialog[open]::backdrop { animation: fade-in .25s ease-out; }
+button, input, select, textarea, #steps span, #steps b, #mode, .checks span {
+  transition: background-color .4s, border-color .4s, color .4s, opacity .3s;
+}
+.timer { transition: font-size .4s ease; }
+
+/* Reduced motion (e.g. Windows "Animation effects" off): keep the fades and colour changes, drop the movement. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes enter { from { opacity: 0; } }
+  .check * { animation: none; stroke-dashoffset: 0; }
+  .timer { transition: none; }
+}
 
 dialog {
   --fg: #e8e6e3; --muted: #8b8f98; /* stay readable even on the bright activation background */
@@ -120,7 +176,8 @@ dialog {
 dialog::backdrop { background: rgba(0, 0, 0, .6); }
 dialog h2 { margin: 0 0 8px; font-weight: 500; }
 .hint { font-size: .8rem; opacity: .8; }
-.row.end { justify-content: flex-end; margin-top: 8px; }
+.row.end { justify-content: flex-end; align-items: center; margin-top: 8px; }
+.row.end .keys { margin: 0 auto 0 0; }
 
 .checks { list-style: none; padding: 0; margin: 8px 0; text-align: left; }
 .checks label {
@@ -128,4 +185,4 @@ dialog h2 { margin: 0 0 8px; font-weight: 500; }
   color: var(--fg); font-size: 1rem; border-bottom: 1px solid var(--line); cursor: pointer;
 }
 .checks input:checked + span { text-decoration: line-through; color: var(--muted); }
-#exit-list { margin: 12px 0 20px; max-height: 50vh; overflow: auto; }
+#exit-list { margin: 12px 0 20px; }
