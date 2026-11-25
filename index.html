@@ -30,10 +30,24 @@
   <section id="preload">
     <form id="setup">
       <h1>New session</h1>
+      <div class="note" id="recap" hidden>
+        <p id="recap-reflection"></p>
+        <p id="recap-step"></p>
+      </div>
       <label>Session title
         <input id="title" maxlength="80" placeholder="What are you working on?">
       </label>
+      <label>What does <em>done</em> look like?
+        <input id="goal" maxlength="140" placeholder="e.g. First draft of section 2 written">
+      </label>
+      <p class="muted small tip">Eat the frog: make this session about your hardest task.</p>
       <div class="row">
+        <label>Timer
+          <select id="timer-mode">
+            <option value="pomodoro">Pomodoro (count down)</option>
+            <option value="flow">Flowtime (count up)</option>
+          </select>
+        </label>
         <label>Pre-load
           <select id="preload-min">
             <option value="5">5 min</option>
@@ -41,9 +55,30 @@
             <option value="15">15 min</option>
           </select>
         </label>
-        <label>Work (minutes) <input id="work" type="number" min="1" max="180" required></label>
-        <label>Rest (minutes) <input id="rest" type="number" min="1" max="60" required></label>
       </div>
+      <div id="pomo-fields">
+        <div class="presets" role="group" aria-label="Timer presets">
+          <span class="muted small">Presets</span>
+          <button type="button" data-preset="25,5">25 / 5</button>
+          <button type="button" data-preset="50,10">50 / 10</button>
+          <button type="button" data-preset="52,17">52 / 17</button>
+          <button type="button" data-preset="90,20">90 / 20</button>
+        </div>
+        <div class="row">
+          <label>Work (min) <input id="work" type="number" min="1" max="180" required></label>
+          <label>Rest (min) <input id="rest" type="number" min="1" max="60" required></label>
+          <label>Long break (min) <input id="long-rest" type="number" min="1" max="60" required></label>
+        </div>
+        <p class="muted small">Every 4th break is a long break.</p>
+      </div>
+      <p class="muted small" id="flow-hint" hidden>Flowtime: work until your focus fades, then press <strong>Take a break</strong>. Your break is a fifth of the time you worked.</p>
+      <fieldset class="checklist">
+        <legend>Before you start</legend>
+        <label><input type="checkbox"> Phone in another room</label>
+        <label><input type="checkbox"> Notifications off</label>
+        <label><input type="checkbox"> Water ready</label>
+        <label><input type="checkbox"> Other tabs and apps closed</label>
+      </fieldset>
       <button type="submit" class="primary">Start pre-loading</button>
     </form>
     <div id="stare" hidden>
@@ -57,9 +92,11 @@
     <div id="act-choice">
       <h1>Activation</h1>
       <p class="muted">Give your body a strong sensory kick to switch into work mode.</p>
-      <div class="row">
-        <button id="act-own-btn">I have my own</button>
-        <button id="act-builtin-btn" class="primary">Use the built-in one</button>
+      <div class="choices">
+        <button id="act-builtin-btn" class="primary">Breathe + jumping jacks <span>about 3 min</span></button>
+        <button id="act-burst-btn">60-second burst <span>all-out movement</span></button>
+        <button id="act-song-btn">Hype song <span>your own track, loud</span></button>
+        <button id="act-own-btn">I have my own <span>cold shower, espresso…</span></button>
       </div>
     </div>
     <div id="act-own" hidden>
@@ -69,8 +106,20 @@
       </label>
       <button class="primary act-done">Done</button>
     </div>
+    <div id="act-song" hidden>
+      <h1>Hype song</h1>
+      <label>Link to a song that fires you up
+        <input id="song-url" type="url" maxlength="500" placeholder="https://…">
+      </label>
+      <p class="muted small">Play it loud and move to it. Press Done when it ends.</p>
+      <p class="small error" id="song-error" hidden>That link needs to start with http:// or https://</p>
+      <div class="row">
+        <button type="button" id="song-play">Play</button>
+        <button class="primary act-done">Done</button>
+      </div>
+    </div>
     <div id="act-builtin" hidden>
-      <div id="circle"></div>
+      <div class="circle" id="circle"></div>
       <p class="big" id="act-label"></p>
       <p class="muted" id="act-sub"></p>
       <button class="primary act-done" id="splash-done" hidden>Done</button>
@@ -79,11 +128,23 @@
 
   <section id="immersion" hidden>
     <p class="muted" id="session-title"></p>
+    <p class="goal" id="session-goal" hidden></p>
+    <p class="muted small" id="start-with" hidden></p>
     <p id="mode"></p>
     <div class="timer huge" id="pomo-timer">25:00</div>
+    <button id="take-break" class="primary" hidden>Take a break</button>
     <div id="rest-panel" hidden>
-      <p class="big">Put your phone away. Stand up and stretch.</p>
-      <ol id="stretches"></ol>
+      <div id="stretch-view">
+        <p class="big">Put your phone away. Stand up and stretch.</p>
+        <ol id="stretches"></ol>
+        <p><button id="box-btn" class="ghost">Do box breathing instead</button></p>
+      </div>
+      <div id="box-view" hidden>
+        <p class="big">Put your phone away. Box breathing: 4 seconds each step.</p>
+        <div class="circle" id="box-circle"></div>
+        <p class="big" id="box-label"></p>
+        <button id="stretch-btn" class="ghost">Back to stretches</button>
+      </div>
     </div>
     <div class="controls">
       <select id="sound" aria-label="Sound">
@@ -102,14 +163,41 @@
       <button id="done" class="primary">Done</button>
     </div>
     <p class="muted small" id="headphones" hidden>Binaural beats only work with headphones.</p>
+    <form id="park-form" class="park">
+      <input id="park" maxlength="200" placeholder="Park a stray thought and press Enter" aria-label="Park a stray thought">
+      <span class="muted small" id="park-count" aria-live="polite"></span>
+    </form>
   </section>
 
   <section id="exit" hidden>
     <h1>Exit protocol</h1>
     <p class="big" id="summary" hidden></p>
-    <p class="muted">Come down gradually. Pick one or more, away from screens.</p>
+    <div class="card" id="ritual">
+      <h2>Shutdown ritual</h2>
+      <div id="parked-block">
+        <h3>Your parked thoughts: deal with them or move them to your to-do list</h3>
+        <ul id="parked-list" class="checks"></ul>
+      </div>
+      <label>Start here next time
+        <textarea id="next-step" rows="2" maxlength="200" placeholder="The very next step, e.g. “Write the opening paragraph of 2.2”"></textarea>
+      </label>
+      <fieldset class="rating">
+        <legend>How was your focus?</legend>
+        <label><input type="radio" name="rating" value="1"> 1</label>
+        <label><input type="radio" name="rating" value="2"> 2</label>
+        <label><input type="radio" name="rating" value="3"> 3</label>
+        <label><input type="radio" name="rating" value="4"> 4</label>
+        <label><input type="radio" name="rating" value="5"> 5</label>
+      </fieldset>
+      <label>What distracted you most?
+        <input id="distraction" maxlength="120" placeholder="e.g. phone, hunger, a noisy room">
+      </label>
+      <button id="shutdown" class="primary">Shutdown complete</button>
+    </div>
+    <p class="done-msg" id="shutdown-done" hidden>Shutdown complete. Work is done for now.</p>
+    <p class="muted">Now come down gradually. Pick one or more, away from screens.</p>
     <input id="search" type="search" placeholder="Search exit protocols" aria-label="Search exit protocols">
-    <ul id="exit-list"></ul>
+    <ul id="exit-list" class="checks"></ul>
     <button id="restart" class="primary">Start new session</button>
   </section>
 

@@ -16,10 +16,10 @@ Every time you open the app, it starts again at phase 1.
 
 | Phase | What happens | The idea behind it |
 |---|---|---|
-| **1. Pre-loading** | A 5, 10 or 15-minute timer (10 by default): *stare at a wall*. You also set the session title and your Pomodoro work and rest lengths here. | Lower your baseline stimulation, so the work ahead feels rewarding by comparison. |
-| **2. Activation** | Use your own trigger (cold shower, loud song, espresso…), or the built-in 3-minute sequence: 5 physiological sighs paced by a breathing circle, 30 jumping jacks to a drum beat, and a cold-water splash. | A strong physical or sensory signal that it's time to work. |
-| **3. Immersion** | A minimal Pomodoro timer you can pause. An alarm sounds when work ends, and rest mode tells you to put your phone away and shows a stretch list. Optional binaural beats, isochronic tones or brown noise, with a volume slider. **Done** moves you on. | Distraction-free work in fixed rounds, with breaks that actually rest you. |
-| **4. Exit protocol** | A summary of your session (focus minutes and finished rounds), then a searchable checklist of wind-down activities: walk, meditate, 20 pushups, journal, NSDR, and more. | Come down gradually rather than jumping straight to cheap stimulation. |
+| **1. Pre-loading** | Set up the session: a title, what *done* looks like, Pomodoro or Flowtime, your timings (with 25/5, 50/10, 52/17 and 90/20 presets), and a quick checklist (phone away, notifications off, water, tabs closed). Then a 5, 10 or 15-minute timer: *stare at a wall*. | Lower your baseline stimulation, so the work ahead feels rewarding by comparison. A clear goal and fewer interruptions make starting easier. |
+| **2. Activation** | Pick one: the built-in 3-minute sequence (5 physiological sighs paced by a breathing circle, 30 jumping jacks to a drum beat, a cold-water splash), a 60-second all-out movement burst, your own hype song, or your own trigger. | A strong physical or sensory signal that it's time to work. |
+| **3. Immersion** | A minimal timer you can pause. **Pomodoro** counts down, and every 4th break is a long one. **Flowtime** counts up until you take a break, and the break is a fifth of the time you worked. Rest mode shows a stretch list or guided box breathing. A *parking lot* box lets you jot stray thoughts down without leaving your work. Optional binaural beats, isochronic tones or brown noise. | Distraction-free work in rounds, with breaks that actually rest you. |
+| **4. Exit protocol** | A summary of your session, then a short **shutdown ritual**: review your parked thoughts, write where to start next time, rate your focus and name your biggest distraction. After that, a searchable checklist of wind-down activities: walk, meditate, 20 pushups, journal, NSDR, and more. | Close the loop so work stops nagging you, then come down gradually rather than jumping straight to cheap stimulation. |
 
 Every phase except the last has a **Skip →** button. The **⚙ settings** button is always in the top right.
 
@@ -28,14 +28,20 @@ Every phase except the last has a **Skip →** button. The **⚙ settings** butt
 ## Features
 
 - Four-phase flow that restarts at phase 1 on every launch
-- Pomodoro timer with your own work and rest lengths (1–180 and 1–60 minutes), pause and resume, and automatic rounds
+- Pomodoro timer with your own work, rest and long-break lengths, presets, pause and resume, and automatic rounds (every 4th break is long)
+- Flowtime mode: the timer counts up, you decide when to break, and the break scales with how long you worked
+- Session goal and "start here next time" note: what you write at Exit is shown when your next session starts
+- Distraction parking lot during work, reviewed in the shutdown ritual
+- Quick reflection (focus 1–5, biggest distraction), shown at the start of your next session
+- Four activation options, including a 60-second movement burst and a link to your own hype song
+- Guided box breathing (4-4-4-4) as an alternative to stretching during breaks
 - Binaural beats or isochronic tones at 10 Hz (alpha), 15 Hz (beta) or 40 Hz (gamma), plus brown noise, all generated live in the app with no audio files
 - A desktop notification when a timer ends while the app is in the background
 - Keeps your screen awake during work rounds
 - A built-in activation sequence with a breathing guide, a drum beat and a colour shift (deliberately no strobing)
 - A session summary and a searchable exit-protocol checklist
 - Settings: choose which speakers or headphones the sound plays through, and edit the exit-protocol and stretch lists to make them your own
-- Your title, timings, sound, volume and lists are remembered between launches
+- Your title, goal, timings, sound, volume, lists and notes are remembered between launches
 
 ## Quick start
 

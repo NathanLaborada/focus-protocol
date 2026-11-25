@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, shell } = require('electron');
 const path = require('node:path');
 
 app.setAppUserModelId('io.github.focusprotocol'); // Windows needs this to show notifications
@@ -16,6 +16,11 @@ app.whenReady().then(() => {
       backgroundThrottling: false, // keep timers exact while minimised
       autoplayPolicy: 'no-user-gesture-required', // let alarms sound without a click first
     },
+  });
+  // Links (like the hype song) open in the user's browser, never inside the app.
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) shell.openExternal(url);
+    return { action: 'deny' };
   });
   win.loadFile(path.join(__dirname, 'index.html'));
 });

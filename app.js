@@ -2,7 +2,7 @@
 
 const $ = (sel) => document.querySelector(sel);
 
-// Dev only: open index.html?speed=60 in a browser to make every countdown run 60x faster.
+// Dev only: open index.html?speed=60 in a browser to make every timer run 60x faster.
 const SPEED = Number(new URLSearchParams(location.search).get('speed')) || 1;
 
 const STRETCHES = [
@@ -49,13 +49,15 @@ const EXITS = [
 
 // ---------- settings (saved on this computer) ----------
 const DEFAULTS = {
-  title: '', preload: 10, work: 25, rest: 5,
+  title: '', goal: '', mode: 'pomodoro', preload: 10, work: 25, rest: 5, longRest: 20,
   sound: 'off', beat: 15, volume: 30, sink: '',
-  ownTrigger: '', exits: EXITS, stretches: STRETCHES,
+  ownTrigger: '', hypeUrl: '', exits: EXITS, stretches: STRETCHES,
+  parked: [], nextStep: '', lastReflection: null,
 };
 const settings = { ...DEFAULTS, ...JSON.parse(localStorage.getItem('settings') || '{}') };
 const save = () => localStorage.setItem('settings', JSON.stringify(settings));
 const clamp = (v, lo, hi, fallback) => (Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : fallback);
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 // ---------- timers (all cleared when the phase changes) ----------
 let timers = [];
@@ -65,7 +67,8 @@ const stopTimers = () => { timers.forEach(clearTimeout); timers = []; }; // clea
 
 const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
-// Counts down against the clock (not tick counting), so it never drifts. Returns pause/resume controls.
+// Both clocks measure against the system clock (not tick counting), so they never drift.
+// Both return the same controls: pause(), resume(), elapsed() in ms.
 function countdown(seconds, el, onDone) {
   const total = seconds * 1000;
   let left = total; // ms left while paused
@@ -90,6 +93,27 @@ function countdown(seconds, el, onDone) {
   }
   resume();
   return { pause, resume, elapsed: () => total - remaining() };
+}
+
+function countup(el) {
+  let banked = 0; // ms counted before the last pause
+  let start = 0;
+  let id = null;
+  const elapsed = () => banked + (id ? (Date.now() - start) * SPEED : 0);
+  const tick = () => { el.textContent = fmt(Math.floor(elapsed() / 1000)); };
+  function resume() {
+    start = Date.now();
+    id = setInterval(tick, 200);
+    timers.push(id);
+    tick();
+  }
+  function pause() {
+    banked = elapsed();
+    clearInterval(id);
+    id = null;
+  }
+  resume();
+  return { pause, resume, elapsed };
 }
 
 // ---------- notifications and keep-awake ----------
@@ -230,6 +254,24 @@ function drum() {
   osc.stop(t + 0.3);
 }
 
+// ---------- shared bits ----------
+// A checklist item: <li><label><input type=checkbox><span>text</span></label></li>
+function checkItem(text) {
+  const li = document.createElement('li');
+  const label = document.createElement('label');
+  label.append(
+    Object.assign(document.createElement('input'), { type: 'checkbox' }),
+    Object.assign(document.createElement('span'), { textContent: text }),
+  );
+  li.append(label);
+  return li;
+}
+// Shows `text` in `el`, or hides `el` when there is nothing to show.
+function showText(el, text) {
+  el.textContent = text;
+  el.hidden = !text;
+}
+
 // ---------- phase navigation ----------
 const PHASES = ['preload', 'activation', 'immersion', 'exit'];
 let phase;
@@ -238,6 +280,7 @@ function go(name) {
   if (phase === 'immersion' && mode === 'work') focusMs += clock.elapsed(); // count the unfinished round
   stopTimers();
   stopSound();
+  stopBox();
   keepAwake(false);
   phase = name;
   delete document.body.dataset.glow;
@@ -254,21 +297,30 @@ const enter = {
   preload() {
     show('#setup', '#stare');
     $('#title').value = settings.title;
+    $('#goal').value = settings.goal;
+    $('#timer-mode').value = settings.mode;
     $('#preload-min').value = String(settings.preload);
     $('#work').value = settings.work;
     $('#rest').value = settings.rest;
+    $('#long-rest').value = settings.longRest;
+    document.querySelectorAll('.checklist input').forEach((b) => { b.checked = false; });
+    showModeFields();
+    showRecap();
   },
 
   activation() {
-    show('#act-choice', '#act-own', '#act-builtin');
+    show('#act-choice', '#act-own', '#act-song', '#act-builtin');
   },
 
   immersion() {
     $('#session-title').textContent = settings.title || 'Untitled session';
+    showText($('#session-goal'), settings.goal && `Goal: ${settings.goal}`);
+    showText($('#start-with'), settings.nextStep && `Start with: ${settings.nextStep}`);
     $('#sound').value = settings.sound;
     $('#beat').value = String(settings.beat);
     $('#volume').value = settings.volume;
     showSoundHints();
+    showParkCount();
     round = 1;
     focusMs = 0;
     roundsDone = 0;
@@ -281,21 +333,54 @@ const enter = {
   exit() {
     const minutes = Math.round(focusMs / 60000);
     $('#summary').hidden = minutes === 0 && roundsDone === 0;
-    $('#summary').textContent = `You focused for ${minutes} minute${minutes === 1 ? '' : 's'}`
-      + ` and finished ${roundsDone} work round${roundsDone === 1 ? '' : 's'}.`;
+    $('#summary').textContent = `You focused for ${plural(minutes, 'minute')} and finished ${plural(roundsDone, 'work round')}.`;
+    $('#ritual').hidden = false;
+    $('#shutdown-done').hidden = true;
+    $('#parked-block').hidden = settings.parked.length === 0;
+    $('#parked-list').replaceChildren(...settings.parked.map(checkItem));
+    $('#next-step').value = settings.nextStep;
+    document.querySelectorAll('input[name=rating]').forEach((r) => { r.checked = false; });
+    $('#distraction').value = '';
     $('#search').value = '';
     renderExits();
   },
 };
 
 // ---------- 1. pre-loading ----------
+function showModeFields() {
+  const flow = settings.mode === 'flow';
+  $('#pomo-fields').hidden = flow;
+  $('#flow-hint').hidden = !flow;
+}
+
+// What last session's shutdown ritual left behind.
+function showRecap() {
+  const r = settings.lastReflection;
+  const parts = [];
+  if (r?.rating) parts.push(`focus ${r.rating}/5`);
+  if (r?.distraction) parts.push(`biggest distraction: ${r.distraction}`);
+  showText($('#recap-reflection'), parts.length ? `Last session: ${parts.join(' · ')}` : '');
+  showText($('#recap-step'), settings.nextStep && `Start with: ${settings.nextStep}`);
+  $('#recap').hidden = !parts.length && !settings.nextStep;
+}
+
 $('#setup').oninput = () => {
   settings.title = $('#title').value.trim();
+  settings.goal = $('#goal').value.trim();
+  settings.mode = $('#timer-mode').value === 'flow' ? 'flow' : 'pomodoro';
   settings.preload = [5, 10, 15].includes(Number($('#preload-min').value)) ? Number($('#preload-min').value) : 10;
   settings.work = clamp(parseFloat($('#work').value), 1, 180, settings.work);
   settings.rest = clamp(parseFloat($('#rest').value), 1, 60, settings.rest);
+  settings.longRest = clamp(parseFloat($('#long-rest').value), 1, 60, settings.longRest);
   save();
+  showModeFields();
 };
+document.querySelectorAll('[data-preset]').forEach((b) => {
+  b.onclick = () => {
+    [$('#work').value, $('#rest').value] = b.dataset.preset.split(',');
+    $('#setup').dispatchEvent(new Event('input'));
+  };
+});
 $('#setup').onsubmit = (e) => {
   e.preventDefault();
   audio(); // unlock audio on a click so the end chime can play
@@ -318,6 +403,18 @@ $('#act-own-btn').onclick = () => {
 $('#own-trigger').oninput = (e) => { settings.ownTrigger = e.target.value; save(); };
 document.querySelectorAll('.act-done').forEach((b) => { b.onclick = () => go('immersion'); });
 
+$('#act-song-btn').onclick = () => {
+  show('#act-song', '#act-choice');
+  $('#song-url').value = settings.hypeUrl;
+  $('#song-error').hidden = true;
+};
+$('#song-url').oninput = (e) => { settings.hypeUrl = e.target.value.trim(); save(); };
+$('#song-play').onclick = () => {
+  const ok = /^https?:\/\/\S+$/i.test(settings.hypeUrl);
+  $('#song-error').hidden = ok;
+  if (ok) window.open(settings.hypeUrl, '_blank', 'noopener'); // the desktop app opens it in your browser
+};
+
 $('#act-builtin-btn').onclick = () => {
   audio();
   show('#act-builtin', '#act-choice');
@@ -325,7 +422,25 @@ $('#act-builtin-btn').onclick = () => {
   sighs();
 };
 
-// Step 1: five physiological sighs (double inhale, long exhale), paced by the circle.
+$('#act-burst-btn').onclick = () => {
+  audio();
+  show('#act-builtin', '#act-choice');
+  $('#splash-done').hidden = true;
+  $('#circle').hidden = true;
+  document.body.dataset.glow = '2';
+  $('#act-label').textContent = 'Go all out: burpees, high knees or sprint on the spot';
+  every(drum, 400); // 150 bpm
+  countdown(60, $('#act-sub'), () => {
+    stopTimers(); // stops the drum
+    document.body.dataset.glow = '3';
+    chime();
+    $('#act-label').textContent = 'Done. Catch your breath.';
+    $('#act-sub').textContent = 'Press Done when you’re ready to work.';
+    $('#splash-done').hidden = false;
+  });
+};
+
+// Built-in step 1: five physiological sighs (double inhale, long exhale), paced by the circle.
 function sighs() {
   document.body.dataset.glow = '1';
   const circle = $('#circle');
@@ -345,7 +460,7 @@ function sighs() {
   })();
 }
 
-// Step 2: 30 jumping jacks to a 100 bpm drum.
+// Built-in step 2: 30 jumping jacks to a 100 bpm drum.
 function jacks() {
   document.body.dataset.glow = '2';
   $('#circle').hidden = true;
@@ -359,7 +474,7 @@ function jacks() {
   }, 600), 2000);
 }
 
-// Step 3: cold water.
+// Built-in step 3: cold water.
 function splash() {
   document.body.dataset.glow = '3';
   chime();
@@ -368,45 +483,72 @@ function splash() {
   $('#splash-done').hidden = false;
 }
 
-// ---------- 3. immersion (pomodoro) ----------
+// ---------- 3. immersion (pomodoro or flowtime) ----------
 let round = 1;
 let mode = 'work';
+let longBreak = false;
 let clock = null;
 let paused = false;
 let focusMs = 0;
 let roundsDone = 0;
 
 const setModeLabel = () => {
-  $('#mode').textContent = `${mode === 'work' ? 'Work' : 'Rest'} · Round ${round}${paused ? ' · Paused' : ''}`;
+  const name = mode === 'work' ? (settings.mode === 'flow' ? 'Flow' : 'Work') : (longBreak ? 'Long break' : 'Rest');
+  $('#mode').textContent = `${name} · Round ${round}${paused ? ' · Paused' : ''}`;
 };
 
 function work() {
   mode = 'work';
+  stopBox();
+  $('#immersion').classList.remove('resting');
   setModeLabel();
   $('#rest-panel').hidden = true;
+  $('#take-break').hidden = settings.mode !== 'flow';
   startSound(settings.sound, settings.beat);
-  clock = countdown(settings.work * 60, $('#pomo-timer'), () => {
-    focusMs += settings.work * 60000;
-    roundsDone++;
-    alarm();
-    notify(`Work round ${round} done. Time to rest: put your phone away and stretch.`);
-    rest();
-  });
+  if (settings.mode === 'flow') {
+    clock = countup($('#pomo-timer'));
+  } else {
+    clock = countdown(settings.work * 60, $('#pomo-timer'), () => { alarm(); endWork(settings.work * 60000); });
+  }
 }
 
-function rest() {
+function endWork(workedMs) {
+  focusMs += workedMs;
+  roundsDone++;
+  let minutes;
+  if (settings.mode === 'flow') {
+    longBreak = false;
+    minutes = Math.max(1, Math.round(workedMs / 60000 / 5)); // Flowtime: a fifth of the time worked
+  } else {
+    longBreak = roundsDone % 4 === 0; // classic Pomodoro: every 4th break is long
+    minutes = longBreak ? settings.longRest : settings.rest;
+  }
+  notify(`Round ${round} done. ${plural(minutes, 'minute')} break: put your phone away and stretch.`);
+  rest(minutes);
+}
+
+function rest(minutes) {
   mode = 'rest';
   stopSound();
+  $('#immersion').classList.add('resting');
   setModeLabel();
   renderStretches();
+  $('#take-break').hidden = true;
   $('#rest-panel').hidden = false;
-  clock = countdown(settings.rest * 60, $('#pomo-timer'), () => {
+  clock = countdown(minutes * 60, $('#pomo-timer'), () => {
     alarm();
     round++;
     notify(`Break over. Round ${round} is starting.`);
     work();
   });
 }
+
+$('#take-break').onclick = () => {
+  clock.pause();
+  paused = false; // a break ends any pause; the next round starts running
+  $('#pause').textContent = 'Pause';
+  endWork(clock.elapsed());
+};
 
 $('#pause').onclick = () => {
   paused = !paused;
@@ -424,6 +566,40 @@ $('#pause').onclick = () => {
 const renderStretches = () => $('#stretches').replaceChildren(
   ...settings.stretches.map((s) => Object.assign(document.createElement('li'), { textContent: s })),
 );
+
+// Box breathing in rest mode: 4 s in, 4 s hold, 4 s out, 4 s hold, on the same circle as Activation.
+let boxTimer = null;
+function startBox() {
+  show('#box-view', '#stretch-view');
+  const steps = [['Breathe in', 1.5], ['Hold', 1.5], ['Breathe out', 0.8], ['Hold', 0.8]];
+  const circle = $('#box-circle');
+  let i = 0;
+  (function next() {
+    const [text, scale] = steps[i++ % steps.length];
+    $('#box-label').textContent = text;
+    circle.style.transition = 'transform 4000ms linear';
+    circle.style.transform = `scale(${scale})`;
+    boxTimer = setTimeout(next, 4000);
+  })();
+}
+function stopBox() {
+  clearTimeout(boxTimer);
+  show('#stretch-view', '#box-view');
+}
+$('#box-btn').onclick = startBox;
+$('#stretch-btn').onclick = stopBox;
+
+// Distraction parking lot: jot it down, get back to work, deal with it at Exit.
+const showParkCount = () => { $('#park-count').textContent = settings.parked.length ? `${settings.parked.length} parked` : ''; };
+$('#park-form').onsubmit = (e) => {
+  e.preventDefault();
+  const thought = $('#park').value.trim();
+  if (!thought) return;
+  settings.parked = [...settings.parked, thought];
+  save();
+  $('#park').value = '';
+  showParkCount();
+};
 
 function showSoundHints() {
   $('#headphones').hidden = settings.sound !== 'binaural';
@@ -446,17 +622,18 @@ $('#volume').oninput = (e) => {
 $('#done').onclick = () => go('exit');
 
 // ---------- 4. exit protocol ----------
-function renderExits() {
-  $('#exit-list').replaceChildren(...settings.exits.map((text) => {
-    const li = document.createElement('li');
-    const label = document.createElement('label');
-    const box = Object.assign(document.createElement('input'), { type: 'checkbox' });
-    const span = Object.assign(document.createElement('span'), { textContent: text });
-    label.append(box, span);
-    li.append(label);
-    return li;
-  }));
-}
+const renderExits = () => $('#exit-list').replaceChildren(...settings.exits.map(checkItem));
+
+$('#next-step').oninput = (e) => { settings.nextStep = e.target.value.trim(); save(); };
+$('#shutdown').onclick = () => {
+  const rating = document.querySelector('input[name=rating]:checked');
+  settings.lastReflection = { rating: rating ? Number(rating.value) : null, distraction: $('#distraction').value.trim() };
+  settings.parked = []; // reviewed: clear the parking lot for next time
+  save();
+  $('#ritual').hidden = true;
+  $('#shutdown-done').hidden = false;
+};
+
 $('#search').oninput = (e) => {
   const q = e.target.value.trim().toLowerCase();
   document.querySelectorAll('#exit-list li').forEach((li) => { li.hidden = !li.textContent.toLowerCase().includes(q); });

@@ -1,7 +1,7 @@
 {
   "name": "focus-protocol",
   "productName": "Focus Protocol",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "A four-phase deep work app: pre-load, activate, immerse (pomodoro + binaural beats), exit.",
   "main": "main.js",
   "license": "MIT",
