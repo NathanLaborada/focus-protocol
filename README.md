@@ -21,14 +21,16 @@ Every time you open the app, it starts again at phase 1.
 | **3. Immersion** | A minimal timer you can pause. **Pomodoro** counts down, and every 4th break is a long one. **Flowtime** counts up until you take a break, and the break is a fifth of the time you worked. Rest mode shows a stretch list or guided box breathing. A *parking lot* box lets you jot stray thoughts down without leaving your work. Optional binaural beats, isochronic tones or brown noise. | Distraction-free work in rounds, with breaks that actually rest you. |
 | **4. Exit protocol** | A summary of your session, then a short **shutdown ritual**: review your parked thoughts, write where to start next time, rate your focus and name your biggest distraction. After that, a searchable checklist of wind-down activities: walk, meditate, 20 pushups, journal, NSDR, and more. | Close the loop so work stops nagging you, then come down gradually rather than jumping straight to cheap stimulation. |
 
-Every phase except the last has a **Skip →** button. The **⚙ settings** button is always in the top right.
+Every phase except the last has a **Skip →** button. The **History** and **⚙ Settings** buttons are always in the top right.
 
 > These are popular productivity practices, not medical advice. The research on binaural beats in particular is mixed, so treat them as optional.
 
 ## Features
 
 - Four-phase flow that restarts at phase 1 on every launch
-- Pomodoro timer with your own work, rest and long-break lengths, presets, pause and resume, and automatic rounds (every 4th break is long)
+- Pomodoro timer with your own work, rest and long-break lengths, presets, pause and resume (or press <kbd>Space</kbd>), a progress bar, and automatic rounds (every 4th break is long)
+- History: focus time today and over the last 7 days, a bar chart per day, your streak, your average focus rating, and your recent sessions
+- Mini timer (desktop app): shrinks to a small window in the corner that stays on top while you work in other apps
 - Flowtime mode: the timer counts up, you decide when to break, and the break scales with how long you worked
 - Session goal and "start here next time" note: what you write at Exit is shown when your next session starts
 - Distraction parking lot during work, reviewed in the shutdown ritual
@@ -41,26 +43,28 @@ Every phase except the last has a **Skip →** button. The **⚙ settings** butt
 - A built-in activation sequence with a breathing guide, a drum beat and a colour shift (deliberately no strobing)
 - A session summary and a searchable exit-protocol checklist
 - Settings: choose which speakers or headphones the sound plays through, and edit the exit-protocol and stretch lists to make them your own
-- Your title, goal, timings, sound, volume, lists and notes are remembered between launches
+- Your title, goal, timings, sound, volume, lists, notes and history are remembered between launches
+- Calm by design: screens fade in and out, breaks switch to their own colour, and timer settings fold away until you need them
+- Desktop app updates itself (Windows installer and Linux); the web version can be installed and works offline
 
 ## Quick start
 
 ### Use the app
 
-**In your browser, no install:** open **https://nathanlaborada.github.io/focus-protocol/**. Your settings are saved in that browser. Keep the tab open during a session, since browsers can slow timers in background tabs; the desktop app doesn't have that limit.
+**In your browser, no install:** open **https://nathanlaborada.github.io/focus-protocol/**. Your settings are saved in that browser. Keep the tab open during a session, since browsers can slow timers in background tabs; the desktop app doesn't have that limit. In Chrome or Edge you can also click the install icon in the address bar to give it its own window. After your first visit it opens offline too.
 
 **Desktop app:** download the file for your system from the [Releases](../../releases) page.
 
 **Windows**, pick one:
 
-- `Focus-Protocol-Setup-<version>.exe` installs the app, adds a Start menu entry, and starts faster.
+- `Focus-Protocol-Setup-<version>.exe` installs the app, adds a Start menu entry, starts faster, and updates itself: new versions download in the background and install when you close the app.
 - `Focus-Protocol-Portable-<version>.exe` needs no install. Double-click it and it runs as-is.
 
 Windows SmartScreen may say *"Windows protected your PC"*, because the app isn't code-signed. Click **More info → Run anyway**.
 
 **macOS:** open `Focus-Protocol-<version>.dmg` and drag the app into Applications. It isn't signed by Apple, so the first time, right-click the app and choose **Open**. On newer macOS versions, if that doesn't offer an Open button, go to **System Settings → Privacy & Security** and click **Open Anyway**.
 
-**Linux:** download `Focus-Protocol-<version>.AppImage`, make it executable (`chmod +x Focus-Protocol-*.AppImage`), and run it.
+**Linux:** download `Focus-Protocol-<version>.AppImage`, make it executable (`chmod +x Focus-Protocol-*.AppImage`), and run it. It updates itself like the Windows installer.
 
 ### Run from source
 
@@ -87,11 +91,13 @@ Releases are built automatically by GitHub Actions (`.github/workflows/release.y
 
 1. Bump `version` in `package.json` and commit.
 2. Tag and push: `git tag v1.x.0`, then `git push --tags`.
-3. The workflow builds on all three systems and attaches the files to the GitHub Release for that tag.
+3. The workflow builds on all three systems and attaches the files to the GitHub Release for that tag, including the `latest*.yml` files the auto-updater reads.
+
+To test the builds without releasing anything, run the workflow by hand: **Actions → Release → Run workflow**, or `gh workflow run release.yml`. The files appear as downloads on that run.
 
 ## How it works
 
-The whole app is three plain files (`index.html`, `style.css`, `app.js`) with no framework, wrapped in Electron by `main.js`.
+The whole app is three plain files (`index.html`, `style.css`, `app.js`) with no framework, wrapped in Electron by `main.js`. The same files are the web version on GitHub Pages.
 
 - **Timers** count down to a fixed end time rather than counting ticks, so they stay accurate. Electron's background throttling is turned off, so timers keep running while the window is minimised.
 - **Audio** comes from the browser's built-in audio engine (the Web Audio API):
@@ -102,7 +108,11 @@ The whole app is three plain files (`index.html`, `style.css`, `app.js`) with no
   - The output device is switched with `AudioContext.setSinkId`, so alarms and beats both follow your choice.
 - **Notifications** use the standard web Notification API. They only appear when the app isn't the active window, since the alarm already covers that case.
 - **Keeping the screen awake** uses the Screen Wake Lock API during Immersion, and the lock is taken again if you minimise and come back.
-- **Settings** are saved in the app's local storage, on your computer only. Nothing is sent anywhere.
+- **Settings and history** are saved in the app's local storage, on your device only, and never uploaded. The only thing the desktop app sends is its update check to GitHub Releases at launch.
+- **History** stores one small entry per session (when, title, minutes, rounds, focus rating). The stats are worked out from those entries each time you open it.
+- **Mini timer:** `preload.js` gives the page one function, which asks `main.js` to shrink the window to the corner and keep it on top. Expanding puts it back where it was.
+- **Updates** use `electron-updater`. At launch, the installed app checks the latest GitHub Release, downloads a newer version in the background and installs it when you quit. The portable .exe and the Mac app skip this.
+- **Offline web version:** a small service worker (`sw.js`) keeps a copy of the app files. It always tries the network first, so you get new versions straight away, and uses the copy only when you're offline. `manifest.webmanifest` makes it installable.
 
 ### Developing
 
@@ -119,7 +129,8 @@ HTML, CSS, vanilla JavaScript, the Web Audio API, Electron, and electron-builder
 
 ## Known limitations
 
-- The app isn't code-signed, so Windows SmartScreen and macOS both warn on first launch.
+- The app isn't code-signed, so Windows SmartScreen and macOS both warn on first launch. For the same reason the Mac app can't update itself: download new versions from Releases.
+- History is kept separately in each browser and in the desktop app; they don't sync.
 - In a regular browser, the output-device list may only show "System default" until the site is given microphone access. The desktop app lists every device.
 
 ## License

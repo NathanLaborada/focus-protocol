@@ -154,6 +154,8 @@ section, #setup, #stare, #act-choice, #act-own, #act-song, #act-builtin,
 #timer-details[open] > :not(summary), #flow-hint, #pomo-fields, #song-error {
   animation: enter .4s ease-out;
 }
+@keyframes leave { to { opacity: 0; transform: translateY(-8px); } }
+.leaving { animation: leave .2s ease-in forwards; } /* the old phase fading out; see go() in app.js */
 dialog[open] { animation: enter .25s ease-out; }
 dialog[open]::backdrop { animation: fade-in .25s ease-out; }
 button, input, select, textarea, #steps span, #steps b, #mode, .checks span {
@@ -164,6 +166,7 @@ button, input, select, textarea, #steps span, #steps b, #mode, .checks span {
 /* Reduced motion (e.g. Windows "Animation effects" off): keep the fades and colour changes, drop the movement. */
 @media (prefers-reduced-motion: reduce) {
   @keyframes enter { from { opacity: 0; } }
+  @keyframes leave { to { opacity: 0; } }
   .check * { animation: none; stroke-dashoffset: 0; }
   .timer { transition: none; }
 }
@@ -186,3 +189,27 @@ dialog h2 { margin: 0 0 8px; font-weight: 500; }
 }
 .checks input:checked + span { text-decoration: line-through; color: var(--muted); }
 #exit-list { margin: 12px 0 20px; }
+
+/* History */
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0; text-align: center; }
+.stats div { padding: 10px 4px; background: #1a1d24; border: 1px solid var(--line); border-radius: 8px; }
+.stats b { display: block; font-size: 1.1rem; font-weight: 500; }
+.stats span { color: var(--muted); font-size: .75rem; }
+.week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; height: 120px; margin: 8px 0 0; }
+.week div { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; }
+.week i { width: 70%; min-height: 2px; background: var(--accent); border-radius: 3px 3px 0 0; }
+.week span { color: var(--muted); font-size: .75rem; }
+dialog h3 { margin: 16px 0 4px; font-size: .9rem; font-weight: 400; color: var(--muted); }
+.recent { list-style: none; padding: 0; margin: 0; font-size: .9rem; max-height: 200px; overflow: auto; }
+.recent li { padding: 6px 0; border-bottom: 1px solid var(--line); }
+
+/* Mini timer (desktop app): only the clock, the progress bar and two buttons. */
+body.mini { padding: 0; }
+body.mini #bar,
+body.mini #immersion > :not(#mode, #pomo-timer, #progress, .controls),
+body.mini .controls > :not(#mini, #pause) { display: none; }
+body.mini #mode { margin: 0; font-size: .7rem; }
+body.mini #immersion .huge { font-size: 2.6rem; margin: 0; } /* beats the larger rest-mode size */
+body.mini .progress { margin: 2px auto 8px; }
+body.mini .controls { margin: 0; opacity: 1; }
+body.mini .controls button { padding: 4px 12px; font-size: .85rem; }

@@ -53,6 +53,7 @@ const DEFAULTS = {
   sound: 'off', beat: 15, volume: 30, sink: '',
   ownTrigger: '', hypeUrl: '', exits: EXITS, stretches: STRETCHES,
   parked: [], nextStep: '', lastReflection: null,
+  history: [], // one entry per finished session: { at (ms), title, minutes, rounds, rating }
 };
 const settings = { ...DEFAULTS, ...JSON.parse(localStorage.getItem('settings') || '{}') };
 const save = () => localStorage.setItem('settings', JSON.stringify(settings));
@@ -277,22 +278,37 @@ function showText(el, text) {
 // ---------- phase navigation ----------
 const PHASES = ['preload', 'activation', 'immersion', 'exit'];
 let phase;
+let leaving = false; // true while the old screen fades out
 
 function go(name) {
+  if (leaving) return; // already switching, e.g. a double click on Skip
   if (phase === 'immersion' && mode === 'work') focusMs += clock.elapsed(); // count the unfinished round
+  if (mini) setMini(false);
   stopTimers();
   stopSound();
   stopBox();
   keepAwake(false);
+  const old = phase && $(`#${phase}`);
   phase = name;
   delete document.body.dataset.glow;
-  document.querySelectorAll('section').forEach((s) => { s.hidden = s.id !== name; });
   document.querySelectorAll('#steps span').forEach((s) => {
     const i = PHASES.indexOf(s.dataset.phase);
     s.classList.toggle('on', i === PHASES.indexOf(name));
     s.classList.toggle('done', i < PHASES.indexOf(name));
   });
   $('#skip').hidden = name === 'exit';
+  if (!old) return showPhase(name);
+  // Fade the old screen out (.leaving in style.css), then the new one fades in.
+  leaving = true;
+  old.classList.add('leaving');
+  setTimeout(() => {
+    leaving = false;
+    showPhase(name);
+    old.classList.remove('leaving'); // after hiding it, so it doesn't flash back in
+  }, 200);
+}
+function showPhase(name) {
+  document.querySelectorAll('section').forEach((s) => { s.hidden = s.id !== name; });
   enter[name]();
 }
 $('#skip').onclick = () => go(PHASES[PHASES.indexOf(phase) + 1]);
@@ -338,8 +354,12 @@ const enter = {
 
   exit() {
     const minutes = Math.round(focusMs / 60000);
-    $('#summary').hidden = minutes === 0 && roundsDone === 0;
+    const worked = minutes > 0 || roundsDone > 0;
+    $('#summary').hidden = !worked;
     $('#summary').textContent = `You focused for ${plural(minutes, 'minute')} and finished ${plural(roundsDone, 'work round')}.`;
+    // Log it for History; the shutdown ritual adds the focus rating to this same entry.
+    thisSession = worked ? { at: Date.now(), title: settings.title, minutes, rounds: roundsDone } : null;
+    if (thisSession) { settings.history = [...settings.history, thisSession]; save(); }
     $('#ritual').hidden = false;
     $('#shutdown-done').hidden = true;
     $('#parked-block').hidden = settings.parked.length === 0;
@@ -635,9 +655,20 @@ $('#volume').oninput = (e) => {
 };
 $('#done').onclick = () => go('exit');
 
+// Mini timer (desktop app only): a small window with just the clock that stays above other apps.
+let mini = false;
+function setMini(on) {
+  mini = on;
+  document.body.classList.toggle('mini', on);
+  $('#mini').textContent = on ? 'Expand' : 'Mini';
+  window.desktop.mini(on);
+}
+$('#mini').hidden = !window.desktop; // set by preload.js in the desktop app only
+$('#mini').onclick = () => setMini(!mini);
+
 // Space pauses or resumes, unless you're typing or a control has focus (Space already presses it).
 document.addEventListener('keydown', (e) => {
-  if (e.code !== 'Space' || phase !== 'immersion' || $('#settings').open) return;
+  if (e.code !== 'Space' || phase !== 'immersion' || leaving || document.querySelector('dialog[open]')) return;
   if (e.target.closest('input, textarea, select, button, summary')) return;
   e.preventDefault();
   $('#pause').click();
@@ -645,11 +676,13 @@ document.addEventListener('keydown', (e) => {
 
 // ---------- 4. exit protocol ----------
 const renderExits = () => $('#exit-list').replaceChildren(...settings.exits.map(checkItem));
+let thisSession = null; // the History entry for the session that just ended
 
 $('#next-step').oninput = (e) => { settings.nextStep = e.target.value.trim(); save(); };
 $('#shutdown').onclick = () => {
   const rating = document.querySelector('input[name=rating]:checked');
   settings.lastReflection = { rating: rating ? Number(rating.value) : null, distraction: $('#distraction').value.trim() };
+  if (thisSession) thisSession.rating = settings.lastReflection.rating; // same object as in settings.history
   settings.parked = []; // reviewed: clear the parking lot for next time
   save();
   $('#ritual').hidden = true;
@@ -707,5 +740,50 @@ $('#reset-lists').onclick = () => {
   fillListEditors();
   listsChanged();
 };
+
+// ---------- history ----------
+const hm = (min) => (min < 60 ? `${min} min` : `${Math.floor(min / 60)} h ${min % 60} min`);
+function renderHistory() {
+  const h = settings.history;
+  const perDay = new Map(); // local calendar day → minutes
+  h.forEach((s) => { const k = new Date(s.at).toDateString(); perDay.set(k, (perDay.get(k) || 0) + s.minutes); });
+  const days = [6, 5, 4, 3, 2, 1, 0].map((back) => { const d = new Date(); d.setDate(d.getDate() - back); return d; });
+  const mins = days.map((d) => perDay.get(d.toDateString()) || 0);
+  // Streak: days in a row with a session, counted back from today (or from yesterday if today has none yet).
+  let streak = 0;
+  const d = new Date();
+  if (!perDay.has(d.toDateString())) d.setDate(d.getDate() - 1);
+  while (perDay.has(d.toDateString())) { streak++; d.setDate(d.getDate() - 1); }
+  const rated = h.filter((s) => s.rating).slice(-10);
+
+  $('#stat-today').textContent = hm(mins[6]);
+  $('#stat-week').textContent = hm(mins.reduce((a, b) => a + b, 0));
+  $('#stat-streak').textContent = plural(streak, 'day');
+  $('#stat-rating').textContent = rated.length ? `${(rated.reduce((a, s) => a + s.rating, 0) / rated.length).toFixed(1)} / 5` : '–';
+
+  const max = Math.max(...mins, 1);
+  const label = (day) => day.toLocaleDateString(undefined, { weekday: 'short' });
+  $('#week-chart').replaceChildren(...days.map((day, i) => {
+    const col = document.createElement('div');
+    col.title = `${label(day)}: ${hm(mins[i])}`;
+    const bar = document.createElement('i');
+    bar.style.height = `${Math.round((mins[i] / max) * 90)}px`;
+    col.append(bar, Object.assign(document.createElement('span'), { textContent: label(day) }));
+    return col;
+  }));
+  $('#week-chart').setAttribute('aria-label', `Focus time, last 7 days: ${days.map((day, i) => `${label(day)} ${hm(mins[i])}`).join(', ')}`);
+
+  $('#recent').replaceChildren(...h.slice(-10).reverse().map((s) => {
+    const when = new Date(s.at).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+    const parts = [when, s.title || 'Untitled session', hm(s.minutes), plural(s.rounds, 'round')];
+    if (s.rating) parts.push(`focus ${s.rating}/5`);
+    return Object.assign(document.createElement('li'), { textContent: parts.join(' · ') });
+  }));
+  $('#no-history').hidden = h.length > 0;
+}
+$('#open-history').onclick = () => { renderHistory(); $('#history').showModal(); };
+
+// Web version: cache the app so it opens offline and can be installed. Not in the desktop app (file://).
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js');
 
 go('preload');
