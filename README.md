@@ -47,7 +47,9 @@ Every phase except the last has a **Skip →** button. The **⚙ settings** butt
 
 ### Use the app
 
-Download the file for your system from the [Releases](../../releases) page.
+**In your browser, no install:** open **https://nathanlaborada.github.io/focus-protocol/**. Your settings are saved in that browser. Keep the tab open during a session, since browsers can slow timers in background tabs; the desktop app doesn't have that limit.
+
+**Desktop app:** download the file for your system from the [Releases](../../releases) page.
 
 **Windows**, pick one:
 
