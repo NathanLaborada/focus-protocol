@@ -1,6 +1,11 @@
 const { app, BrowserWindow, ipcMain, screen, shell } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('node:path');
+const { pathToFileURL } = require('node:url');
+
+// The one page this app ever shows. Compared without ?query/#hash (e.g. ?speed=60 when testing).
+const PAGE = pathToFileURL(path.join(__dirname, 'index.html')).href;
+const isAppPage = (url) => typeof url === 'string' && url.split(/[?#]/)[0] === PAGE;
 
 app.setAppUserModelId('io.github.focusprotocol'); // Windows needs this to show notifications
 
@@ -24,6 +29,8 @@ app.whenReady().then(() => {
     if (/^https?:\/\//i.test(url)) shell.openExternal(url);
     return { action: 'deny' };
   });
+  // Never navigate the window itself anywhere else (a page from the web must not get the desktop bridge).
+  win.webContents.on('will-navigate', (e, url) => { if (!isAppPage(url)) e.preventDefault(); });
   win.loadFile(path.join(__dirname, 'index.html'));
 
   // Update from GitHub Releases: downloads in the background, installs when the app closes.
@@ -36,6 +43,7 @@ app.whenReady().then(() => {
 // Mini timer: shrink to a small window in the top-right corner that stays above other apps.
 let fullBounds;
 ipcMain.handle('mini', (e, on) => {
+  if (!isAppPage(e.senderFrame?.url)) return; // only the app's own page may resize the window
   const win = BrowserWindow.fromWebContents(e.sender);
   if (on) {
     fullBounds = win.getBounds();
