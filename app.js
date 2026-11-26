@@ -22,7 +22,6 @@ const EXITS = [
   'Go for a 10–20 minute walk outside',
   'Meditate for 10 minutes',
   'Do 20 pushups',
-  'Take a cold shower',
   'Journal what you got done and what is next',
   'Write tomorrow’s top 3 tasks',
   'Stretch or do light yoga',
@@ -41,7 +40,7 @@ const EXITS = [
   'Non-sleep deep rest (NSDR) for 10–20 minutes',
   'Walk up and down the stairs for 5 minutes',
   'Water plants or do light gardening',
-  'Take a power nap (20 minutes max)',
+  'Take a 10-minute nap', // 10 min beat 20–30 min, which left people groggy (Brooks & Lack 2006)
   'Fold laundry or do a light chore',
   'Sit in silence with no input for 5 minutes',
   'Go for a short bike ride',
@@ -49,7 +48,7 @@ const EXITS = [
 
 // ---------- settings (saved on this computer) ----------
 const DEFAULTS = {
-  title: '', goal: '', mode: 'pomodoro', preload: 10, work: 25, rest: 5, longRest: 20,
+  title: '', goal: '', plan: '', mode: 'pomodoro', preload: 5, work: 25, rest: 5, longRest: 20,
   sound: 'off', beat: 15, volume: 30, sink: '',
   ownTrigger: '', hypeUrl: '', exits: EXITS, stretches: STRETCHES,
   parked: [], nextStep: '', lastReflection: null,
@@ -57,6 +56,9 @@ const DEFAULTS = {
 };
 const settings = { ...DEFAULTS, ...JSON.parse(localStorage.getItem('settings') || '{}') };
 const save = () => localStorage.setItem('settings', JSON.stringify(settings));
+// Two default exit items were changed after a research review. Saved lists only change where the old wording is untouched.
+const OLD_EXITS = new Map([['Take a power nap (20 minutes max)', 'Take a 10-minute nap'], ['Take a cold shower', null]]);
+settings.exits = settings.exits.flatMap((e) => (OLD_EXITS.has(e) ? (OLD_EXITS.get(e) ?? []) : [e]));
 const clamp = (v, lo, hi, fallback) => (Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : fallback);
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
@@ -320,6 +322,7 @@ const enter = {
     show('#setup', '#stare');
     $('#title').value = settings.title;
     $('#goal').value = settings.goal;
+    $('#plan').value = settings.plan;
     $('#timer-mode').value = settings.mode;
     $('#preload-min').value = String(settings.preload);
     $('#work').value = settings.work;
@@ -337,6 +340,7 @@ const enter = {
   immersion() {
     $('#session-title').textContent = settings.title || 'Untitled session';
     showText($('#session-goal'), settings.goal && `Goal: ${settings.goal}`);
+    showText($('#session-plan'), settings.plan && `Plan: ${settings.plan}`);
     showText($('#start-with'), settings.nextStep && `Start with: ${settings.nextStep}`);
     $('#sound').value = settings.sound;
     $('#beat').value = String(settings.beat);
@@ -363,10 +367,11 @@ const enter = {
     $('#ritual').hidden = false;
     $('#shutdown-done').hidden = true;
     $('#parked-block').hidden = settings.parked.length === 0;
-    $('#parked-list').replaceChildren(...settings.parked.map(checkItem));
+    $('#parked-list').replaceChildren(...settings.parked.map(parkedItem));
     $('#next-step').value = settings.nextStep;
     document.querySelectorAll('input[name=rating]').forEach((r) => { r.checked = false; });
     $('#distraction').value = '';
+    $('#helped').value = '';
     $('#search').value = '';
     renderExits();
   },
@@ -390,6 +395,7 @@ function showRecap() {
   const r = settings.lastReflection;
   const parts = [];
   if (r?.rating) parts.push(`focus ${r.rating}/5`);
+  if (r?.helped) parts.push(`what helped: ${r.helped}`);
   if (r?.distraction) parts.push(`biggest distraction: ${r.distraction}`);
   showText($('#recap-reflection'), parts.length ? `Last session: ${parts.join(' · ')}` : '');
   showText($('#recap-step'), settings.nextStep && `Start with: ${settings.nextStep}`);
@@ -399,8 +405,9 @@ function showRecap() {
 $('#setup').oninput = () => {
   settings.title = $('#title').value.trim();
   settings.goal = $('#goal').value.trim();
+  settings.plan = $('#plan').value.trim();
   settings.mode = $('#timer-mode').value === 'flow' ? 'flow' : 'pomodoro';
-  settings.preload = [5, 10, 15].includes(Number($('#preload-min').value)) ? Number($('#preload-min').value) : 10;
+  settings.preload = [5, 10, 15].includes(Number($('#preload-min').value)) ? Number($('#preload-min').value) : 5;
   settings.work = clamp(parseFloat($('#work').value), 1, 180, settings.work);
   settings.rest = clamp(parseFloat($('#rest').value), 1, 60, settings.rest);
   settings.longRest = clamp(parseFloat($('#long-rest').value), 1, 60, settings.longRest);
@@ -419,6 +426,7 @@ $('#setup').onsubmit = (e) => {
   if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
   show('#stare', '#setup');
   $('#preload-len').textContent = settings.preload;
+  showText($('#stare-plan'), settings.plan && `Your plan: ${settings.plan}`);
   countdown(settings.preload * 60, $('#preload-timer'), () => {
     chime();
     notify('Pre-loading done. Time to activate.');
@@ -472,46 +480,49 @@ $('#act-burst-btn').onclick = () => {
   });
 };
 
-// Built-in step 1: five physiological sighs (double inhale, long exhale), paced by the circle.
+// One physiological sigh: double inhale, long exhale. [text, circle scale, ms]
+const SIGH = [['Inhale through your nose', 1.4, 2000], ['Inhale again, top it up', 1.65, 1000], ['Long, slow exhale', 0.7, 6000]];
+
+// Built-in step 1: five physiological sighs to settle (they calm rather than energise), paced by the circle.
 function sighs() {
   document.body.dataset.glow = '1';
   const circle = $('#circle');
   circle.hidden = false;
-  const breath = [['Inhale through your nose', 1.4, 2000], ['Inhale again, top it up', 1.65, 1000], ['Long, slow exhale', 0.7, 6000]];
   let cycle = 0;
   let i = 0;
   (function next() {
-    if (i === breath.length) { i = 0; cycle++; }
+    if (i === SIGH.length) { i = 0; cycle++; }
     if (cycle === 5) return jacks();
-    const [text, scale, ms] = breath[i++];
+    const [text, scale, ms] = SIGH[i++];
     $('#act-label').textContent = text;
-    $('#act-sub').textContent = `Sigh ${cycle + 1} of 5`;
+    $('#act-sub').textContent = `Settle · sigh ${cycle + 1} of 5`;
     circle.style.transition = `transform ${ms}ms ease-in-out`;
     circle.style.transform = `scale(${scale})`;
     later(next, ms);
   })();
 }
 
-// Built-in step 2: 30 jumping jacks to a 100 bpm drum.
+// Built-in step 2: a minute of jumping jacks (100 at 100 bpm), closer to the tested "exercise snack" doses.
+const JACKS = 100;
 function jacks() {
   document.body.dataset.glow = '2';
   $('#circle').hidden = true;
-  $('#act-label').textContent = 'Jumping jacks, one per beat';
+  $('#act-label').textContent = 'Jumping jacks for a minute, one per beat';
   $('#act-sub').textContent = 'Get ready…';
   let n = 0;
   later(() => every(() => {
     drum();
-    $('#act-sub').textContent = `${++n} / 30`;
-    if (n === 30) { stopTimers(); later(splash, 800); }
+    $('#act-sub').textContent = `${++n} / ${JACKS}`;
+    if (n === JACKS) { stopTimers(); later(splash, 800); }
   }, 600), 2000);
 }
 
-// Built-in step 3: cold water.
+// Built-in step 3: cold water, as an optional cue that work starts (not an alertness boost).
 function splash() {
   document.body.dataset.glow = '3';
   chime();
-  $('#act-label').textContent = 'Splash cold water on your face';
-  $('#act-sub').textContent = 'Then come back and press Done.';
+  $('#act-label').textContent = 'Optional: splash cold water on your face';
+  $('#act-sub').textContent = 'A sensory cue that work starts now. Then press Done.';
   $('#splash-done').hidden = false;
 }
 
@@ -523,6 +534,7 @@ let clock = null;
 let paused = false;
 let focusMs = 0;
 let roundsDone = 0;
+const FLOW_NUDGE_MS = 90 * 60000;
 
 const setModeLabel = () => {
   const name = mode === 'work' ? (settings.mode === 'flow' ? 'Flow' : 'Work') : (longBreak ? 'Long break' : 'Rest');
@@ -537,9 +549,21 @@ function work() {
   $('#rest-panel').hidden = true;
   $('#take-break').hidden = settings.mode !== 'flow';
   $('#progress').hidden = settings.mode === 'flow'; // count-up has no end to measure against
+  $('#flow-nudge').hidden = true;
   startSound(settings.sound, settings.beat);
   if (settings.mode === 'flow') {
-    clock = countup($('#pomo-timer'));
+    const flowClock = countup($('#pomo-timer'));
+    clock = flowClock;
+    // People who set their own breaks tend to drift into fatigue: nudge once after 90 minutes without one.
+    const nudge = setInterval(() => {
+      if (clock !== flowClock || mode !== 'work') return clearInterval(nudge); // this round is over
+      if (flowClock.elapsed() < FLOW_NUDGE_MS) return;
+      clearInterval(nudge);
+      $('#flow-nudge').hidden = false;
+      chime();
+      notify('90 minutes without a break. Time to take one?');
+    }, 1000);
+    timers.push(nudge);
   } else {
     clock = countdown(settings.work * 60, $('#pomo-timer'), () => { alarm(); endWork(settings.work * 60000); }, $('#progress-fill'));
   }
@@ -563,6 +587,7 @@ function endWork(workedMs) {
 function rest(minutes) {
   mode = 'rest';
   stopSound();
+  $('#flow-nudge').hidden = true;
   $('#immersion').classList.add('resting');
   setModeLabel();
   renderStretches();
@@ -601,26 +626,32 @@ const renderStretches = () => $('#stretches').replaceChildren(
   ...settings.stretches.map((s) => Object.assign(document.createElement('li'), { textContent: s })),
 );
 
-// Box breathing in rest mode: 4 s in, 4 s hold, 4 s out, 4 s hold, on the same circle as Activation.
+// Guided breathing in rest mode, on the same kind of circle as Activation. [text, circle scale, ms]
+const BREATHING = {
+  box: ['Box breathing: 4 seconds each step.', [['Breathe in', 1.5, 4000], ['Hold', 1.5, 4000], ['Breathe out', 0.8, 4000], ['Hold', 0.8, 4000]]],
+  sigh: ['Cyclic sighing: two breaths in through the nose, one long breath out.', SIGH],
+};
 let boxTimer = null;
-function startBox() {
+function startBox(kind) {
   show('#box-view', '#stretch-view');
-  const steps = [['Breathe in', 1.5], ['Hold', 1.5], ['Breathe out', 0.8], ['Hold', 0.8]];
+  const [title, steps] = BREATHING[kind];
+  $('#breath-title').textContent = title;
   const circle = $('#box-circle');
   let i = 0;
   (function next() {
-    const [text, scale] = steps[i++ % steps.length];
+    const [text, scale, ms] = steps[i++ % steps.length];
     $('#box-label').textContent = text;
-    circle.style.transition = 'transform 4000ms linear';
+    circle.style.transition = `transform ${ms}ms ease-in-out`;
     circle.style.transform = `scale(${scale})`;
-    boxTimer = setTimeout(next, 4000);
+    boxTimer = setTimeout(next, ms);
   })();
 }
 function stopBox() {
   clearTimeout(boxTimer);
   show('#stretch-view', '#box-view');
 }
-$('#box-btn').onclick = startBox;
+$('#box-btn').onclick = () => startBox('box');
+$('#sigh-btn').onclick = () => startBox('sigh');
 $('#stretch-btn').onclick = stopBox;
 
 // Distraction parking lot: jot it down, get back to work, deal with it at Exit.
@@ -638,6 +669,7 @@ $('#park-form').onsubmit = (e) => {
 function showSoundHints() {
   $('#headphones').hidden = settings.sound !== 'binaural';
   $('#beat').hidden = settings.sound === 'off' || settings.sound === 'brown';
+  $('#sound-note').hidden = settings.sound === 'off';
 }
 function soundChanged() {
   settings.sound = $('#sound').value;
@@ -678,12 +710,29 @@ document.addEventListener('keydown', (e) => {
 const renderExits = () => $('#exit-list').replaceChildren(...settings.exits.map(checkItem));
 let thisSession = null; // the History entry for the session that just ended
 
+// A parked thought at review, with a decision to make. Only "Keep for next session" survives the shutdown.
+function parkedItem(text) {
+  const li = document.createElement('li');
+  const decide = document.createElement('select');
+  decide.setAttribute('aria-label', `What to do with: ${text}`);
+  decide.append(...[['', 'Decide…'], ['done', 'Done'], ['todo', 'Moved to my to-do list'], ['keep', 'Keep for next session'], ['drop', 'Drop it']]
+    .map(([value, label]) => new Option(label, value)));
+  li.append(Object.assign(document.createElement('span'), { textContent: text }), decide);
+  return li;
+}
+
 $('#next-step').oninput = (e) => { settings.nextStep = e.target.value.trim(); save(); };
 $('#shutdown').onclick = () => {
   const rating = document.querySelector('input[name=rating]:checked');
-  settings.lastReflection = { rating: rating ? Number(rating.value) : null, distraction: $('#distraction').value.trim() };
+  settings.lastReflection = {
+    rating: rating ? Number(rating.value) : null,
+    helped: $('#helped').value.trim(),
+    distraction: $('#distraction').value.trim(),
+  };
   if (thisSession) thisSession.rating = settings.lastReflection.rating; // same object as in settings.history
-  settings.parked = []; // reviewed: clear the parking lot for next time
+  settings.parked = [...document.querySelectorAll('#parked-list li')]
+    .filter((li) => li.querySelector('select').value === 'keep')
+    .map((li) => li.querySelector('span').textContent);
   save();
   $('#ritual').hidden = true;
   $('#shutdown-done').hidden = false;
@@ -749,16 +798,13 @@ function renderHistory() {
   h.forEach((s) => { const k = new Date(s.at).toDateString(); perDay.set(k, (perDay.get(k) || 0) + s.minutes); });
   const days = [6, 5, 4, 3, 2, 1, 0].map((back) => { const d = new Date(); d.setDate(d.getDate() - back); return d; });
   const mins = days.map((d) => perDay.get(d.toDateString()) || 0);
-  // Streak: days in a row with a session, counted back from today (or from yesterday if today has none yet).
-  let streak = 0;
-  const d = new Date();
-  if (!perDay.has(d.toDateString())) d.setDate(d.getDate() - 1);
-  while (perDay.has(d.toDateString())) { streak++; d.setDate(d.getDate() - 1); }
+  // Days with a session in the last 7, not a streak: a rest day is part of the routine, not a broken chain.
+  const focusDays = days.filter((d) => perDay.has(d.toDateString())).length;
   const rated = h.filter((s) => s.rating).slice(-10);
 
   $('#stat-today').textContent = hm(mins[6]);
   $('#stat-week').textContent = hm(mins.reduce((a, b) => a + b, 0));
-  $('#stat-streak').textContent = plural(streak, 'day');
+  $('#stat-days').textContent = `${focusDays} of 7`;
   $('#stat-rating').textContent = rated.length ? `${(rated.reduce((a, s) => a + s.rating, 0) / rated.length).toFixed(1)} / 5` : '–';
 
   const max = Math.max(...mins, 1);

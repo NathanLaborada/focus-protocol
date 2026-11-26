@@ -96,6 +96,8 @@ button:hover { border-color: var(--muted); }
   display: grid; grid-template-columns: 1fr 1fr; gap: 2px 16px;
 }
 .checklist label { margin: 6px 0 0; }
+.blocker-tip { grid-column: 1 / -1; margin: 6px 0 0; }
+#stare-plan { margin: 12px auto 0; max-width: 460px; }
 .checklist legend, .rating legend { padding: 0; color: var(--muted); font-size: .9rem; }
 .checklist label, .rating label {
   display: inline-flex; flex: none; gap: 6px; align-items: center;
@@ -118,6 +120,8 @@ button:hover { border-color: var(--muted); }
 .goal { margin: 0; }
 #start-with { margin: 4px 0 0; }
 #take-break { margin-top: 8px; }
+.nudge { color: var(--accent); margin: 4px 0 8px; animation: enter .4s ease-out; }
+#session-plan { margin: 4px 0 0; }
 #immersion.resting .huge { font-size: 4.5rem; } /* room for the stretch list */
 #immersion.resting { --accent: #73daca; } /* breaks get their own colour */
 #immersion.resting #mode { color: var(--accent); }
@@ -189,6 +193,8 @@ dialog h2 { margin: 0 0 8px; font-weight: 500; }
 }
 .checks input:checked + span { text-decoration: line-through; color: var(--muted); }
 #exit-list { margin: 12px 0 20px; }
+#parked-list li { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 8px 4px; border-bottom: 1px solid var(--line); }
+#parked-list select { width: auto; flex: none; padding: 4px 8px; font-size: .85rem; }
 
 /* History */
 .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0; text-align: center; }

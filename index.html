@@ -47,6 +47,9 @@
       <label>What does <em>done</em> look like?
         <input id="goal" maxlength="140" placeholder="e.g. First draft of section 2 written">
       </label>
+      <label>If-then plan <span class="hint">(optional)</span>
+        <input id="plan" maxlength="140" placeholder="e.g. When the timer starts, I'll open the outline. If I want my phone, I'll park the thought.">
+      </label>
       <p class="muted small tip">Eat the frog: make this session about your hardest task.</p>
       <details id="timer-details">
       <summary><span class="muted">Timer</span> <span id="timer-summary"></span></summary>
@@ -88,22 +91,24 @@
         <label><input type="checkbox"> Notifications off</label>
         <label><input type="checkbox"> Water ready</label>
         <label><input type="checkbox"> Other tabs and apps closed</label>
+        <p class="muted small blocker-tip">Tip: a website blocker or your system's Focus / Do Not Disturb mode keeps them closed for you.</p>
       </fieldset>
       <button type="submit" class="primary">Start pre-loading</button>
     </form>
     <div id="stare" hidden>
-      <p class="big">Stare at a wall for <span id="preload-len">10</span> minutes.</p>
-      <p class="muted">No phone, no music, no chasing thoughts. This lowers your baseline dopamine so the work ahead feels rewarding.</p>
-      <div class="timer" id="preload-timer">10:00</div>
+      <p class="big">Sit quietly for <span id="preload-len">5</span> minutes.</p>
+      <p class="muted">No phone, no music, no feeds. Let your mind settle on the session ahead, so you start without your attention already pulled elsewhere.</p>
+      <p class="note" id="stare-plan" hidden></p>
+      <div class="timer" id="preload-timer">05:00</div>
     </div>
   </section>
 
   <section id="activation" hidden>
     <div id="act-choice">
       <h1>Activation</h1>
-      <p class="muted">Give your body a strong sensory kick to switch into work mode.</p>
+      <p class="muted">Settle your breathing, then give your body a clear signal that it's time to work.</p>
       <div class="choices">
-        <button id="act-builtin-btn" class="primary">Breathe + jumping jacks <span>about 3 min</span></button>
+        <button id="act-builtin-btn" class="primary">Settle, then move <span>sighs, a minute of jumping jacks · about 2 min</span></button>
         <button id="act-burst-btn">60-second burst <span>all-out movement</span></button>
         <button id="act-song-btn">Hype song <span>your own track, loud</span></button>
         <button id="act-own-btn">I have my own <span>cold shower, espresso…</span></button>
@@ -114,6 +119,7 @@
       <label>What are you doing to activate?
         <textarea id="own-trigger" rows="3" maxlength="300" placeholder="e.g. cold shower, loud song, espresso, sprint up the stairs"></textarea>
       </label>
+      <p class="muted small">Cold showers put a sudden strain on the heart: skip them if you have a heart condition.</p>
       <button class="primary act-done">Done</button>
     </div>
     <div id="act-song" hidden>
@@ -139,19 +145,21 @@
   <section id="immersion" hidden>
     <p class="muted" id="session-title"></p>
     <p class="goal" id="session-goal" hidden></p>
+    <p class="muted small" id="session-plan" hidden></p>
     <p class="muted small" id="start-with" hidden></p>
     <p id="mode"></p>
     <div class="timer huge" id="pomo-timer">25:00</div>
     <div class="progress" id="progress" aria-hidden="true"><div id="progress-fill"></div></div>
+    <p class="small nudge" id="flow-nudge" role="status" hidden>90 minutes without a break. Long stretches tend to end in fatigue: consider taking one.</p>
     <button id="take-break" class="primary" hidden>Take a break</button>
     <div id="rest-panel" hidden>
       <div id="stretch-view">
         <p class="big">Put your phone away. Stand up and stretch.</p>
         <ol id="stretches"></ol>
-        <p><button id="box-btn" class="ghost">Do box breathing instead</button></p>
+        <p>Or breathe instead: <button id="box-btn" class="ghost">Box breathing</button> <button id="sigh-btn" class="ghost">Cyclic sighing</button></p>
       </div>
       <div id="box-view" hidden>
-        <p class="big">Put your phone away. Box breathing: 4 seconds each step.</p>
+        <p class="big">Put your phone away. <span id="breath-title"></span></p>
         <div class="circle" id="box-circle"></div>
         <p class="big" id="box-label"></p>
         <button id="stretch-btn" class="ghost">Back to stretches</button>
@@ -165,9 +173,9 @@
         <option value="brown">Brown noise</option>
       </select>
       <select id="beat" aria-label="Frequency">
-        <option value="10">Calm focus · 10 Hz alpha</option>
-        <option value="15">Focus · 15 Hz beta</option>
-        <option value="40">Deep focus · 40 Hz gamma</option>
+        <option value="10">10 Hz (alpha)</option>
+        <option value="15">15 Hz (beta)</option>
+        <option value="40">40 Hz (gamma)</option>
       </select>
       <label class="volume" title="Volume">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -181,6 +189,7 @@
     </div>
     <p class="muted small keys"><kbd>Space</kbd> pause or resume</p>
     <p class="muted small" id="headphones" hidden>Binaural beats only work with headphones.</p>
+    <p class="muted small" id="sound-note" hidden>Optional: evidence for beats is mixed and there is none for 40 Hz; noise mostly helps people with ADHD traits. Keep the volume moderate.</p>
     <form id="park-form" class="park">
       <input id="park" maxlength="200" placeholder="Park a stray thought and press Enter" aria-label="Park a stray thought">
       <span class="muted small" id="park-count" aria-live="polite"></span>
@@ -193,11 +202,11 @@
     <div class="card" id="ritual">
       <h2>Shutdown ritual</h2>
       <div id="parked-block">
-        <h3>Your parked thoughts: deal with them or move them to your to-do list</h3>
+        <h3>Your parked thoughts: decide what happens to each one</h3>
         <ul id="parked-list" class="checks"></ul>
       </div>
-      <label>Start here next time
-        <textarea id="next-step" rows="2" maxlength="200" placeholder="The very next step, e.g. “Write the opening paragraph of 2.2”"></textarea>
+      <label>Start here next time: the very next action
+        <textarea id="next-step" rows="2" maxlength="200" placeholder="Something you can just do, e.g. “Open draft.docx and write the first line of 2.2”"></textarea>
       </label>
       <fieldset class="rating">
         <legend>How was your focus?</legend>
@@ -207,6 +216,9 @@
         <label><input type="radio" name="rating" value="4"> 4</label>
         <label><input type="radio" name="rating" value="5"> 5</label>
       </fieldset>
+      <label>What helped your focus?
+        <input id="helped" maxlength="120" placeholder="e.g. clear goal, quiet room, phone in the other room">
+      </label>
       <label>What distracted you most?
         <input id="distraction" maxlength="120" placeholder="e.g. phone, hunger, a noisy room">
       </label>
@@ -250,8 +262,8 @@
       <div class="stats">
         <div><b id="stat-today"></b><span>today</span></div>
         <div><b id="stat-week"></b><span>last 7 days</span></div>
-        <div><b id="stat-streak"></b><span>streak</span></div>
-        <div><b id="stat-rating"></b><span>avg focus, last 10</span></div>
+        <div><b id="stat-days"></b><span>days focused, last 7</span></div>
+        <div><b id="stat-rating"></b><span>self-rated focus, last 10 (rough)</span></div>
       </div>
       <div class="week" id="week-chart" role="img"></div>
       <h3>Recent sessions</h3>

@@ -16,27 +16,28 @@ Every time you open the app, it starts again at phase 1.
 
 | Phase | What happens | The idea behind it |
 |---|---|---|
-| **1. Pre-loading** | Set up the session: a title, what *done* looks like, Pomodoro or Flowtime, your timings (with 25/5, 50/10, 52/17 and 90/20 presets), and a quick checklist (phone away, notifications off, water, tabs closed). Then a 5, 10 or 15-minute timer: *stare at a wall*. | Lower your baseline stimulation, so the work ahead feels rewarding by comparison. A clear goal and fewer interruptions make starting easier. |
-| **2. Activation** | Pick one: the built-in 3-minute sequence (5 physiological sighs paced by a breathing circle, 30 jumping jacks to a drum beat, a cold-water splash), a 60-second all-out movement burst, your own hype song, or your own trigger. | A strong physical or sensory signal that it's time to work. |
-| **3. Immersion** | A minimal timer you can pause. **Pomodoro** counts down, and every 4th break is a long one. **Flowtime** counts up until you take a break, and the break is a fifth of the time you worked. Rest mode shows a stretch list or guided box breathing. A *parking lot* box lets you jot stray thoughts down without leaving your work. Optional binaural beats, isochronic tones or brown noise. | Distraction-free work in rounds, with breaks that actually rest you. |
-| **4. Exit protocol** | A summary of your session, then a short **shutdown ritual**: review your parked thoughts, write where to start next time, rate your focus and name your biggest distraction. After that, a searchable checklist of wind-down activities: walk, meditate, 20 pushups, journal, NSDR, and more. | Close the loop so work stops nagging you, then come down gradually rather than jumping straight to cheap stimulation. |
+| **1. Pre-loading** | Set up the session: a title, what *done* looks like, Pomodoro or Flowtime, your timings (with 25/5, 50/10, 52/17 and 90/20 presets), an optional if-then plan ("When the timer starts, I'll open the outline"), and a quick checklist (phone away, notifications off, water, tabs closed). Then 5, 10 or 15 quiet minutes (5 by default) with no phone, music or feeds. | Start without your attention already pulled elsewhere. A specific goal, an if-then plan and fewer interruptions are the best-supported ways to make starting easier. |
+| **2. Activation** | Pick one: the built-in 2-minute sequence (5 physiological sighs to settle, a minute of jumping jacks to a drum beat, an optional cold-water splash), a 60-second all-out movement burst, your own hype song, or your own trigger. | Settle first, then a clear physical signal that it's time to work. |
+| **3. Immersion** | A minimal timer you can pause. **Pomodoro** counts down, and every 4th break is a long one. **Flowtime** counts up until you take a break, and the break is a fifth of the time you worked; after 90 minutes without one, it gently suggests a break. Rest mode shows a stretch list, guided box breathing or cyclic sighing. A *parking lot* box lets you jot stray thoughts down without leaving your work. Optional binaural beats, isochronic tones or brown noise. | Distraction-free work in rounds, with breaks that actually rest you. |
+| **4. Exit protocol** | A summary of your session, then a short **shutdown ritual**: decide what happens to each parked thought (done, to your to-do list, keep for next session, or drop), write the very next action for next time, rate your focus, and note what helped and what distracted you most. After that, a searchable checklist of wind-down activities: walk, meditate, 20 pushups, journal, NSDR, and more. | Close the loop so work stops nagging you, then come down gradually rather than jumping straight to cheap stimulation. |
 
 Every phase except the last has a **Skip →** button. The **History** and **⚙ Settings** buttons are always in the top right.
 
-> These are popular productivity practices, not medical advice. The research on binaural beats in particular is mixed, so treat them as optional.
+> These are popular productivity practices, not medical advice. The evidence is strongest for the planning parts (goal, if-then plan, parking lot, next step, notifications off). Evidence for binaural beats is mixed, there is none for 40 Hz, and noise mostly helps people with ADHD traits, so treat the sounds as optional.
 
 ## Features
 
 - Four-phase flow that restarts at phase 1 on every launch
 - Pomodoro timer with your own work, rest and long-break lengths, presets, pause and resume (or press <kbd>Space</kbd>), a progress bar, and automatic rounds (every 4th break is long)
-- History: focus time today and over the last 7 days, a bar chart per day, your streak, your average focus rating, and your recent sessions
+- History: focus time today and over the last 7 days, a bar chart per day, how many of the last 7 days you focused (no streak to break: rest days are part of the routine), your self-rated focus, and your recent sessions
 - Mini timer (desktop app): shrinks to a small window in the corner that stays on top while you work in other apps
 - Flowtime mode: the timer counts up, you decide when to break, and the break scales with how long you worked
-- Session goal and "start here next time" note: what you write at Exit is shown when your next session starts
-- Distraction parking lot during work, reviewed in the shutdown ritual
-- Quick reflection (focus 1–5, biggest distraction), shown at the start of your next session
+- Session goal, an optional if-then plan, and a "start here next time" note: what you write at Exit is shown when your next session starts
+- A gentle nudge after 90 minutes of Flowtime without a break
+- Distraction parking lot during work; at the shutdown ritual you decide what happens to each thought
+- Quick reflection (focus 1–5, what helped, biggest distraction), shown at the start of your next session
 - Four activation options, including a 60-second movement burst and a link to your own hype song
-- Guided box breathing (4-4-4-4) as an alternative to stretching during breaks
+- Guided box breathing (4-4-4-4) or cyclic sighing as alternatives to stretching during breaks
 - Binaural beats or isochronic tones at 10 Hz (alpha), 15 Hz (beta) or 40 Hz (gamma), plus brown noise, all generated live in the app with no audio files
 - A desktop notification when a timer ends while the app is in the background
 - Keeps your screen awake during work rounds
